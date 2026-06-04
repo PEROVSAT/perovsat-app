@@ -1,0 +1,36 @@
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+    - name: perovsat-org
+      url-base: https://github.com/PEROVSAT
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: v3.7.0
+      import:
+        name-allowlist:
+          - cmsis
+          - hal_stm32
+
+    - name: amu-driver
+      remote: perovsat-org
+      revision: main
+      groups:
+        - nda
+
+    - name: eps-driver
+      remote: perovsat-org
+      revision: main
+      groups:
+        - nda
+
+    - name: eyestar-driver
+      remote: perovsat-org
+      revision: main
+      groups:
+        - nda
+
+  self:
+    path: perovsat-app
