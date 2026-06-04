@@ -2,7 +2,7 @@ manifest:
   remotes:
     - name: zephyrproject-rtos
       url-base: https://github.com/zephyrproject-rtos
-    - name: perovsat-org
+    - name: origin
       url-base: https://github.com/PEROVSAT
 
   projects:
@@ -15,19 +15,19 @@ manifest:
           - hal_stm32
 
     - name: amu-driver
-      remote: perovsat-org
+      remote: origin
       revision: main
       groups:
         - nda
 
     - name: eps-driver
-      remote: perovsat-org
+      remote: origin
       revision: main
       groups:
         - nda
 
     - name: eyestar-driver
-      remote: perovsat-org
+      remote: origin
       revision: main
       groups:
         - nda
