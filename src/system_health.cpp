@@ -7,9 +7,9 @@ void system_health_entry(void *p1, void *p2, void *p3) {
     LOG_INF("System Health: booting, starting all threads...");
 
     k_thread_start(payload_thread_id);
-    k_thread_start(dfa_thread_id);
-    k_thread_start(comms_thread_id);
-    k_thread_start(commands_thread_id);
+    // k_thread_start(dfa_thread_id);
+    // k_thread_start(comms_thread_id);
+    // k_thread_start(commands_thread_id);
 
     while (1) {
         LOG_INF("System Health: nominal");

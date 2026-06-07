@@ -1,0 +1,13 @@
+choice PEROVSAT_IMU_DRIVER
+	prompt "IMU Driver"
+	default PEROVSAT_IMU_MOCK
+
+config PEROVSAT_IMU_MOCK
+	bool "Mock MPU6050 (static test data)"
+	depends on DT_HAS_PEROVSAT_MPU6050_MOCK_ENABLED
+
+config PEROVSAT_IMU_HARDWARE
+	bool "Hardware MPU6050"
+	depends on MPU6050
+
+endchoice
