@@ -8,6 +8,7 @@ config PEROVSAT_IMU_MOCK
 
 config PEROVSAT_IMU_HARDWARE
 	bool "Hardware MPU6050"
-	depends on MPU6050
+	depends on DT_HAS_PEROVSAT_MPU6050_ENABLED
+	select MPU6050
 
 endchoice
