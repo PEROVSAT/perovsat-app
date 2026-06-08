@@ -1,0 +1,10 @@
+/ {
+	aliases {
+		imu = &imu_mock;
+	};
+
+	imu_mock: imu_mock {
+		compatible = "perovsat,mpu6050-mock";
+		status = "okay";
+	};
+};

@@ -1,0 +1,5 @@
+mainmenu "PerovSat Application"
+
+source "Kconfig.zephyr"
+
+rsource "drivers/imu/Kconfig"

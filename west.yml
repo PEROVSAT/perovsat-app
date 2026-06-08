@@ -33,5 +33,9 @@ manifest:
       groups:
         - nda
 
+    - name: imu-driver
+      remote: origin
+      revision: main
+
   self:
     path: perovsat-app

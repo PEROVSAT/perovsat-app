@@ -1,0 +1,7 @@
+name: hw-imu
+append:
+  EXTRA_CONF_FILE: hw-imu.conf
+boards:
+  nucleo_u575zi_q/stm32u575xx:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: boards/nucleo_u575zi_q.overlay
