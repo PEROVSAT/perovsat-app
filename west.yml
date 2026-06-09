@@ -18,22 +18,20 @@ manifest:
     - name: amu-driver
       remote: origin
       revision: main
-      groups:
-        - nda
 
     - name: eps-driver
       remote: origin
       revision: main
-      groups:
-        - nda
 
     - name: eyestar-driver
       remote: origin
       revision: main
-      groups:
-        - nda
 
     - name: imu-driver
+      remote: origin
+      revision: main
+
+    - name: imu-mock-driver
       remote: origin
       revision: main
 

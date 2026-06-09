@@ -47,14 +47,18 @@ dbuild_devices.conf  →  device_map.yml  →  snippets/*  →  west build -S ..
 
 - Every device in the conf file is defined in `device_map.yml`
 - Every resolved snippet directory exists under `snippets/`
-- For hardware modes, `snippets/<snippet>/boards/<board>.overlay` exists
-  and the snippet's `snippet.yml` lists that board
+- For modes with `west_project` in `device_map.yml`, the west repo is cloned
+  and contains `zephyr/module.yml` (omit `west_project` for in-app drivers)
+- For modes with `board_overlay_required`, `snippets/<snippet>/boards/<board>.overlay`
+  exists and the snippet's `snippet.yml` lists that board
 
 ## Adding a new device
 
 1. Create atomic snippets under `snippets/` (e.g. `sun-z-mock/`, `sun-z-hw/`).
 2. Add the device to [device_map.yml](device_map.yml).
-3. Add a line to [dbuild_devices.conf](../dbuild_devices.conf).
+3. Set `west_project` on any mode whose driver lives in an external west repo.
+   Omit it for drivers built into perovsat-app.
+4. Add a line to [dbuild_devices.conf](../dbuild_devices.conf).
 
 See the comments in `device_map.yml` for the expected schema.
 

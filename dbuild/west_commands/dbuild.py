@@ -10,6 +10,7 @@ from pathlib import Path
 
 import yaml
 from west.commands import WestCommand
+from west.manifest import Manifest
 
 APP_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DEVICES_FILE = APP_ROOT / 'dbuild_devices.conf'
@@ -71,6 +72,44 @@ def snippet_dir(snippet_name: str) -> Path:
     return SNIPPETS_ROOT / snippet_name
 
 
+def load_west_project_index() -> dict:
+    '''Return a name -> Project map for all west manifest projects.'''
+    manifest = Manifest.from_file()
+    return {project.name: project for project in manifest.get_projects([])}
+
+
+def validate_west_project(
+    device: str,
+    mode: str,
+    west_project: str,
+    west_projects: dict,
+) -> str | None:
+    '''Return an error message if a required west project is unavailable.'''
+    if west_project not in west_projects:
+        return (
+            f'device_map.yml references west project {west_project!r} for '
+            f'{device!r} mode {mode!r}, but it is not listed in west.yml'
+        )
+
+    project = west_projects[west_project]
+    if not project.is_cloned():
+        return (
+            f'device {device!r} mode {mode!r} requires west project '
+            f'{west_project!r}, which is not cloned in this workspace. '
+            f'If you lack access, choose a different mode in dbuild_devices.conf. '
+            f'If you should have access, run: west update'
+        )
+
+    module_yml = Path(project.abspath) / 'zephyr' / 'module.yml'
+    if not module_yml.is_file():
+        return (
+            f'device {device!r} mode {mode!r} requires west project '
+            f'{west_project!r}, but {module_yml} is missing'
+        )
+
+    return None
+
+
 def snippet_has_board_overlay(snippet_path: Path, board: str) -> bool:
     '''Return True if the snippet has board overlay coverage for board.'''
     overlay = snippet_path / 'boards' / f'{board}.overlay'
@@ -96,11 +135,15 @@ def resolve_snippets(
     devices_conf: dict[str, str],
     device_map: dict,
     board: str,
+    west_projects: dict | None = None,
 ) -> list[str]:
     '''Resolve device modes to snippet names and validate support.'''
     board_name = board_short_name(board)
     snippets: list[str] = []
     errors: list[str] = []
+
+    if west_projects is None:
+        west_projects = load_west_project_index()
 
     for device, mode in devices_conf.items():
         if device not in device_map:
@@ -129,6 +172,15 @@ def resolve_snippets(
                 f'{snippet_name!r}, but {snippet_path} does not exist'
             )
             continue
+
+        west_project = entry.get('west_project')
+        if west_project:
+            west_error = validate_west_project(
+                device, mode, west_project, west_projects,
+            )
+            if west_error:
+                errors.append(west_error)
+                continue
 
         if entry.get('board_overlay_required', False):
             if not snippet_has_board_overlay(snippet_path, board_name):

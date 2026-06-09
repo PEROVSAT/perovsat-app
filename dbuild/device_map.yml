@@ -5,6 +5,8 @@
 #   2. For each mode, specify the snippet name under snippets/<snippet-name>/
 #   3. Set board_overlay_required: true for any mode whose snippet needs a
 #      board-specific overlay (hardware, emulation). Mock is usually false.
+#   4. Set west_project when the mode's driver lives in an external west repo.
+#      Omit west_project when the driver is built into perovsat-app (in-app).
 #
 # Valid modes: mock, hardware
 # (emulation will be added in a future revision)
@@ -16,3 +18,4 @@ devices:
     hardware:
       snippet: imu-hw
       board_overlay_required: true
+      west_project: imu-driver
