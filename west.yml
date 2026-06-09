@@ -39,3 +39,4 @@ manifest:
 
   self:
     path: perovsat-app
+    west-commands: dbuild/west-commands.yml

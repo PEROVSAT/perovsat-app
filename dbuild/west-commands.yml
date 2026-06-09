@@ -1,0 +1,6 @@
+west-commands:
+  - file: dbuild/west_commands/dbuild.py
+    commands:
+      - name: dbuild
+        class: Dbuild
+        help: build with per-device modes from dbuild_devices.conf

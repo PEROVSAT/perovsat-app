@@ -1,4 +1,0 @@
-name: mock
-append:
-  EXTRA_CONF_FILE: mock.conf
-  EXTRA_DTC_OVERLAY_FILE: mock.overlay

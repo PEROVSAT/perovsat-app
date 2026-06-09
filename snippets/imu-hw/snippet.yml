@@ -1,6 +1,6 @@
-name: hw-imu
+name: imu-hw
 append:
-  EXTRA_CONF_FILE: hw-imu.conf
+  EXTRA_CONF_FILE: imu-hw.conf
 boards:
   nucleo_u575zi_q/stm32u575xx:
     append:
