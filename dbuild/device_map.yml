@@ -15,6 +15,7 @@ devices:
     mock:
       snippet: imu-mock
       board_overlay_required: false
+      west_project: imu-mock-driver
     hardware:
       snippet: imu-hw
       board_overlay_required: true

@@ -1,3 +1,0 @@
-description: Mock MPU6050 IMU for testing
-compatible: "perovsat,mpu6050-mock"
-include: base.yaml

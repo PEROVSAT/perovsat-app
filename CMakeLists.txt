@@ -12,8 +12,6 @@ target_include_directories(app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-add_subdirectory(drivers/imu)
-
 target_sources(app PRIVATE
     src/main.cpp
     src/system_health.cpp
