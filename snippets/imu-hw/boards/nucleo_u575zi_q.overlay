@@ -8,7 +8,7 @@
 	status = "okay";
 
 	mpu6050: mpu6050@68 {
-		compatible = "perovsat,mpu6050";
+		compatible = "zephyr,mpu6050";
 		reg = <0x68>;
 		status = "okay";
 	};
