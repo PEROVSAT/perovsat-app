@@ -40,24 +40,25 @@ dbuild_devices.conf  →  device_map.yml  →  snippets/*  →  west build -S ..
 ```
 
 - **dbuild_devices.conf** — which mode each device uses (`mock` or `hardware`)
-- **device_map.yml** — maps `(device, mode)` to a snippet name
+- **device_map.yml** — maps `(device, mode)` to a snippet and west driver project
 - **snippets/** — atomic per-device Zephyr snippets (overlay + Kconfig)
+- **west driver repos** — Zephyr modules listed in `west.yml` (e.g. `imu-mock-driver`)
 
 `west dbuild` validates before CMake runs:
 
 - Every device in the conf file is defined in `device_map.yml`
+- Every mode in `device_map.yml` defines `snippet` and `west_project`
 - Every resolved snippet directory exists under `snippets/`
-- For modes with `west_project` in `device_map.yml`, the west repo is cloned
-  and contains `zephyr/module.yml` (omit `west_project` for in-app drivers)
+- Every required west project is cloned and contains `zephyr/module.yml`
 - For modes with `board_overlay_required`, `snippets/<snippet>/boards/<board>.overlay`
   exists and the snippet's `snippet.yml` lists that board
 
 ## Adding a new device
 
-1. Create atomic snippets under `snippets/` (e.g. `sun-z-mock/`, `sun-z-hw/`).
-2. Add the device to [device_map.yml](device_map.yml).
-3. Set `west_project` on any mode whose driver lives in an external west repo.
-   Omit it for drivers built into perovsat-app.
+1. Add the driver as a west project in `west.yml`.
+2. Create atomic snippets under `snippets/` (e.g. `sun-z-mock/`, `sun-z-hw/`).
+3. Add the device to [device_map.yml](device_map.yml) with `snippet`, `west_project`,
+   and `board_overlay_required` for each mode.
 4. Add a line to [dbuild_devices.conf](../dbuild_devices.conf).
 
 See the comments in `device_map.yml` for the expected schema.

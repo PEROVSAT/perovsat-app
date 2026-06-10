@@ -68,6 +68,32 @@ def load_device_map(path: Path) -> dict:
     return data['devices']
 
 
+def validate_device_map(device_map: dict) -> None:
+    '''Ensure every mode entry defines required fields.'''
+    errors: list[str] = []
+
+    for device, modes in device_map.items():
+        if not isinstance(modes, dict):
+            errors.append(f'device {device!r}: expected a mode map')
+            continue
+
+        for mode, entry in modes.items():
+            if not isinstance(entry, dict):
+                errors.append(f'device {device!r} mode {mode!r}: invalid entry')
+                continue
+            if 'snippet' not in entry:
+                errors.append(
+                    f'device {device!r} mode {mode!r}: missing required snippet'
+                )
+            if 'west_project' not in entry:
+                errors.append(
+                    f'device {device!r} mode {mode!r}: missing required west_project'
+                )
+
+    if errors:
+        raise ValueError('\n'.join(errors))
+
+
 def snippet_dir(snippet_name: str) -> Path:
     return SNIPPETS_ROOT / snippet_name
 
@@ -173,14 +199,13 @@ def resolve_snippets(
             )
             continue
 
-        west_project = entry.get('west_project')
-        if west_project:
-            west_error = validate_west_project(
-                device, mode, west_project, west_projects,
-            )
-            if west_error:
-                errors.append(west_error)
-                continue
+        west_project = entry['west_project']
+        west_error = validate_west_project(
+            device, mode, west_project, west_projects,
+        )
+        if west_error:
+            errors.append(west_error)
+            continue
 
         if entry.get('board_overlay_required', False):
             if not snippet_has_board_overlay(snippet_path, board_name):
@@ -287,6 +312,7 @@ class Dbuild(WestCommand):
         try:
             devices_conf = parse_devices_conf(Path(args.devices_file))
             device_map = load_device_map(Path(args.device_map))
+            validate_device_map(device_map)
             snippets = resolve_snippets(devices_conf, device_map, args.board)
         except (FileNotFoundError, ValueError) as exc:
             self.die(str(exc))

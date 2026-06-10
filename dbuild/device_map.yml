@@ -3,10 +3,9 @@
 # To add a new device:
 #   1. Add an entry under `devices:` with the logical name used in dbuild_devices.conf
 #   2. For each mode, specify the snippet name under snippets/<snippet-name>/
-#   3. Set board_overlay_required: true for any mode whose snippet needs a
+#   3. Set west_project to the west manifest project that provides the driver
+#   4. Set board_overlay_required: true for any mode whose snippet needs a
 #      board-specific overlay (hardware, emulation). Mock is usually false.
-#   4. Set west_project when the mode's driver lives in an external west repo.
-#      Omit west_project when the driver is built into perovsat-app (in-app).
 #
 # Valid modes: mock, hardware
 # (emulation will be added in a future revision)
