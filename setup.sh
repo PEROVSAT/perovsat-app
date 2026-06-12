@@ -148,6 +148,37 @@ setup_python_and_west() {
   else
     echo "Warning: zephyr/scripts/requirements.txt not found. Skipping."
   fi
+
+  install_pre_commit_hooks
+}
+
+install_pre_commit_hooks() {
+  echo "--- Installing pre-commit hooks for PEROVSAT repositories ---"
+
+  pip install pre-commit
+
+  local name repo_path url
+  while read -r name repo_path url; do
+    # Skip legacy drivers until replaced by template-generated repos.
+    if [[ "$name" == "imu-driver" || "$name" == "imu-mock-driver" ]]; then
+      continue
+    fi
+
+    # PEROVSAT manifest repo (perovsat-app) or projects hosted under github.com/PEROVSAT.
+    if [[ "$name" != "manifest" && "$url" != *"github.com/PEROVSAT"* ]]; then
+      continue
+    fi
+
+    if [[ ! -d "$repo_path/.git" ]]; then
+      echo "Skipping $repo_path (not cloned or not a git repo)"
+      continue
+    fi
+
+    if [[ -f "$repo_path/.pre-commit-config.yaml" ]]; then
+      echo "Installing pre-commit hooks in $repo_path"
+      (cd "$repo_path" && pre-commit install)
+    fi
+  done < <(west list -f "{name} {path} {url}")
 }
 
 cleanup_legacy_builds() {
