@@ -15,18 +15,6 @@ manifest:
           - cmsis
           - hal_stm32
 
-    - name: amu-driver
-      remote: origin
-      revision: main
-
-    - name: eps-driver
-      remote: origin
-      revision: main
-
-    - name: eyestar-driver
-      remote: origin
-      revision: main
-
     - name: imu-driver
       remote: origin
       revision: main

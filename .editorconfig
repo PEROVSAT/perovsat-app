@@ -1,0 +1,57 @@
+# EditorConfig: https://editorconfig.org/
+# Aligned with Zephyr conventions for embedded C/C++ and PerovSat YAML/CMake.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 100
+
+[*.S]
+indent_style = tab
+indent_size = 8
+
+[*.{c,h}]
+indent_style = tab
+indent_size = 8
+
+[*.{cpp,hpp}]
+indent_style = tab
+indent_size = 8
+
+[*.ld]
+indent_style = tab
+indent_size = 8
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.sh]
+indent_style = space
+indent_size = 4
+
+[{CMakeLists.txt,*.cmake}]
+indent_style = space
+indent_size = 2
+
+[*.{dts,dtsi,overlay}]
+indent_style = tab
+indent_size = 8
+
+[Kconfig*]
+indent_style = tab
+indent_size = 8
+
+[COMMIT_EDITMSG]
+max_line_length = 75
+
+[{*.patch,*.diff}]
+trim_trailing_whitespace = false
