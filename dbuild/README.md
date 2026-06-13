@@ -33,6 +33,12 @@ Preview the resolved command without building:
 west dbuild -b nucleo_u575zi_q --dry-run
 ```
 
+Build and run under QEMU (or your board's run target) the same way as `west build`:
+
+```sh
+west dbuild -b qemu_cortex_m3 -t run
+```
+
 ## How it works
 
 ```
@@ -97,15 +103,22 @@ can pass `-b nucleo_u575zi_q` without the SoC qualifier.
 
 ## Extra build options
 
+`west dbuild` is a thin wrapper around `west build`. It resolves device snippets,
+then forwards any flag it does not recognize directly to `west build` — no extra
+`--` is needed for normal west options like `-t run`, `-c`, or `-o=-j8`.
+
 `west dbuild` defaults to `-p always` so snippet or mode changes always produce
 a clean build (and a matching binary for `west flash`). Use `-p never` for
 faster incremental rebuilds when you know the device configuration is unchanged.
 
-Pass additional `west build` arguments after `--`:
+Use `--` only when passing raw cmake arguments, matching `west build` itself:
 
 ```sh
 west dbuild -b nucleo_u575zi_q -- -DCONFIG_LOG_DEFAULT_LEVEL=4
 ```
+
+dbuild-specific options use long forms where short flags would collide with
+`west build` (`--devices-file` instead of `-f`, `--dry-run` instead of `-n`).
 
 After adding or changing the west extension, run `west update` once so west
 discovers the new command.

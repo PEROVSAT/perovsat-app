@@ -232,6 +232,18 @@ def resolve_snippets(
     return snippets
 
 
+def split_west_and_cmake_extra(extra_args: list[str]) -> tuple[list[str], list[str]]:
+    '''Split passthrough args into west build options and cmake options.
+
+    West build options (e.g. -t run, -c, -o=...) must appear before the source
+    directory. Only arguments after an explicit ``--`` are forwarded to cmake.
+    '''
+    if '--' in extra_args:
+        sep = extra_args.index('--')
+        return extra_args[:sep], extra_args[sep + 1:]
+    return extra_args, []
+
+
 def build_west_command(
     board: str,
     snippets: list[str],
@@ -240,6 +252,8 @@ def build_west_command(
     extra_args: list[str],
 ) -> list[str]:
     '''Construct the west build command line.'''
+    west_extra, cmake_extra = split_west_and_cmake_extra(extra_args)
+
     cmd = ['west', 'build', '-b', board]
 
     for snippet in snippets:
@@ -251,11 +265,12 @@ def build_west_command(
     if pristine:
         cmd.extend(['-p', pristine])
 
+    cmd.extend(west_extra)
     cmd.append(str(APP_ROOT))
 
-    if extra_args:
+    if cmake_extra:
         cmd.append('--')
-        cmd.extend(extra_args)
+        cmd.extend(cmake_extra)
 
     return cmd
 
@@ -274,6 +289,17 @@ class Dbuild(WestCommand):
             self.name,
             formatter_class=argparse.RawDescriptionHelpFormatter,
             description=self.description,
+            epilog=(
+                'dbuild is a thin wrapper around west build: it resolves device '
+                'snippets, then runs west build with the same flags you would use '
+                'directly. Any option not listed above is forwarded to west build '
+                '(for example: -t run, -c, -o=-j8). Use -- only when passing raw '
+                'cmake arguments, as with west build itself.\n\n'
+                'Examples:\n'
+                '  west dbuild -b nucleo_u575zi_q\n'
+                '  west dbuild -b nucleo_u575zi_q -t run\n'
+                '  west dbuild -b nucleo_u575zi_q -- -DCONFIG_LOG_DEFAULT_LEVEL=4'
+            ),
         )
 
         parser.add_argument(
@@ -281,7 +307,7 @@ class Dbuild(WestCommand):
             help='board to build for (short name, e.g. nucleo_u575zi_q)',
         )
         parser.add_argument(
-            '-f', '--devices-file',
+            '--devices-file',
             default=str(DEFAULT_DEVICES_FILE),
             help='path to dbuild_devices.conf (default: dbuild_devices.conf)',
         )
@@ -301,7 +327,7 @@ class Dbuild(WestCommand):
             help='pristine build directory before building (default: always)',
         )
         parser.add_argument(
-            '-n', '--dry-run',
+            '--dry-run',
             action='store_true',
             help='print the resolved west build command without running it',
         )
