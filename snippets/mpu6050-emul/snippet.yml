@@ -1,6 +1,6 @@
-name: imu-emul
+name: mpu6050-emul
 append:
-  EXTRA_CONF_FILE: imu-emul.conf
+  EXTRA_CONF_FILE: mpu6050-emul.conf
 boards:
   mps2/an521/cpu0:
     append:

@@ -1,9 +1,9 @@
 / {
 	aliases {
-		imu = &imu_mock;
+		imu = &mpu6050_mock;
 	};
 
-	imu_mock: imu_mock {
+	mpu6050_mock: mpu6050_mock {
 		compatible = "invensense,mpu6050-mock";
 		status = "okay";
 	};

@@ -1,24 +1,29 @@
 # Device map for dbuild.
 #
-# To add a new device:
-#   1. Add an entry under `devices:` with the logical name used in dbuild_devices.conf
-#   2. For each mode, specify the snippet name under snippets/<snippet-name>/
+# Logical roles (e.g. IMU) map to device-specific snippets under snippets/.
+# To add a new device implementation for an existing role:
+#   1. Create atomic snippets (e.g. mpu6050-mock/, mpu6050-hw/, mpu6050-emul/)
+#   2. Point the role's mode entries at those snippet names
 #   3. Set west_project to the west manifest project that provides the driver
 #   4. Set board_overlay_required: true for any mode whose snippet needs a
 #      board-specific overlay (hardware, emulation). Mock is usually false.
+#
+# To add a new logical role:
+#   1. Add an entry under `devices:` with the name used in dbuild_devices.conf
+#   2. For each mode, specify the snippet name under snippets/<snippet-name>/
 #
 # Valid modes: mock, hardware, emulation
 devices:
   IMU:
     mock:
-      snippet: imu-mock
+      snippet: mpu6050-mock
       board_overlay_required: false
-      west_project: imu-mock-driver
-    hardware:
-      snippet: imu-hw
-      board_overlay_required: true
-      west_project: imu-driver
-    emulation:
-      snippet: imu-emul
-      board_overlay_required: true
-      west_project: imu-driver
+      west_project: mpu6050-mock-driver
+    # hardware:
+    #   snippet: mpu6050-hw
+    #   board_overlay_required: true
+    #   west_project: imu-driver
+    # emulation:
+    #   snippet: mpu6050-emul
+    #   board_overlay_required: true
+    #   west_project: imu-driver
