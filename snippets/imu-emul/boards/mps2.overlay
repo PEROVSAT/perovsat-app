@@ -1,0 +1,20 @@
+/ {
+	aliases {
+		imu = &mpu6050;
+	};
+
+	i2c_emul: i2c-emul-controller {
+		compatible = "zephyr,i2c-emul-controller";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+};
+
+&i2c_emul {
+	mpu6050: mpu6050@68 {
+		compatible = "zephyr,mpu6050";
+		reg = <0x68>;
+		status = "okay";
+	};
+};

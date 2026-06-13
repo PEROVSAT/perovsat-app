@@ -7,8 +7,7 @@
 #   4. Set board_overlay_required: true for any mode whose snippet needs a
 #      board-specific overlay (hardware, emulation). Mock is usually false.
 #
-# Valid modes: mock, hardware
-# (emulation will be added in a future revision)
+# Valid modes: mock, hardware, emulation
 devices:
   IMU:
     mock:
@@ -17,5 +16,9 @@ devices:
       west_project: imu-mock-driver
     hardware:
       snippet: imu-hw
+      board_overlay_required: true
+      west_project: imu-driver
+    emulation:
+      snippet: imu-emul
       board_overlay_required: true
       west_project: imu-driver

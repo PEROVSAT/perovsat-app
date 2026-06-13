@@ -1,0 +1,7 @@
+name: imu-emul
+append:
+  EXTRA_CONF_FILE: imu-emul.conf
+boards:
+  mps2/an521/cpu0:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: boards/mps2.overlay
