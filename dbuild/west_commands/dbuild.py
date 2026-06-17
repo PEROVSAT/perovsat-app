@@ -16,6 +16,7 @@ APP_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DEVICES_FILE = APP_ROOT / 'dbuild_devices.conf'
 DEFAULT_DEVICE_MAP = APP_ROOT / 'dbuild' / 'device_map.yml'
 SNIPPETS_ROOT = APP_ROOT / 'snippets'
+DEFAULT_CMAKE_ARGS = ['-DCMAKE_EXPORT_COMPILE_COMMANDS=ON']
 
 
 def board_short_name(board: str) -> str:
@@ -281,10 +282,9 @@ def build_west_command(
     cmd.extend(west_extra)
     cmd.append(str(APP_ROOT))
 
-    all_cmake = cmake_kconfig_args + cmake_extra
-    if all_cmake:
-        cmd.append('--')
-        cmd.extend(all_cmake)
+    all_cmake = DEFAULT_CMAKE_ARGS + cmake_kconfig_args + cmake_extra
+    cmd.append('--')
+    cmd.extend(all_cmake)
 
     return cmd
 
