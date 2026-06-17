@@ -15,7 +15,7 @@ manifest:
           - cmsis
           - hal_stm32
 
-    - name: mpu6050-mock-driver
+    - name: mpu6050-driver
       remote: origin
       revision: main
 

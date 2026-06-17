@@ -1,6 +1,6 @@
-name: mpu6050-hw
+name: mpu6050-hardware
 append:
-  EXTRA_CONF_FILE: mpu6050-hw.conf
+  EXTRA_CONF_FILE: mpu6050-hardware.conf
 boards:
   nucleo_u575zi_q/stm32u575xx:
     append:

@@ -69,25 +69,33 @@ def load_device_map(path: Path) -> dict:
 
 
 def validate_device_map(device_map: dict) -> None:
-    '''Ensure every mode entry defines required fields.'''
+    '''Ensure every device and mode entry defines required fields.'''
     errors: list[str] = []
 
-    for device, modes in device_map.items():
-        if not isinstance(modes, dict):
-            errors.append(f'device {device!r}: expected a mode map')
+    for device, entry in device_map.items():
+        if not isinstance(entry, dict):
+            errors.append(f'device {device!r}: expected a device entry map')
             continue
 
-        for mode, entry in modes.items():
-            if not isinstance(entry, dict):
+        if 'west_project' not in entry:
+            errors.append(f'device {device!r}: missing required west_project')
+
+        modes = entry.get('modes')
+        if not isinstance(modes, dict) or not modes:
+            errors.append(f'device {device!r}: missing or empty modes map')
+            continue
+
+        for mode, mode_entry in modes.items():
+            if not isinstance(mode_entry, dict):
                 errors.append(f'device {device!r} mode {mode!r}: invalid entry')
                 continue
-            if 'snippet' not in entry:
+            if 'snippet' not in mode_entry:
                 errors.append(
                     f'device {device!r} mode {mode!r}: missing required snippet'
                 )
-            if 'west_project' not in entry:
+            if 'kconfig_backend' not in mode_entry:
                 errors.append(
-                    f'device {device!r} mode {mode!r}: missing required west_project'
+                    f'device {device!r} mode {mode!r}: missing required kconfig_backend'
                 )
 
     if errors:
@@ -114,7 +122,7 @@ def validate_west_project(
     if west_project not in west_projects:
         return (
             f'device_map.yml references west project {west_project!r} for '
-            f'{device!r} mode {mode!r}, but it is not listed in west.yml'
+            f'{device!r}, but it is not listed in west.yml'
         )
 
     project = west_projects[west_project]
@@ -157,15 +165,16 @@ def snippet_has_board_overlay(snippet_path: Path, board: str) -> bool:
     return False
 
 
-def resolve_snippets(
+def resolve_build_config(
     devices_conf: dict[str, str],
     device_map: dict,
     board: str,
     west_projects: dict | None = None,
-) -> list[str]:
-    '''Resolve device modes to snippet names and validate support.'''
+) -> tuple[list[str], list[str]]:
+    '''Resolve device modes to snippets and backend Kconfig CMake args.'''
     board_name = board_short_name(board)
     snippets: list[str] = []
+    cmake_args: list[str] = []
     errors: list[str] = []
 
     if west_projects is None:
@@ -179,7 +188,8 @@ def resolve_snippets(
             )
             continue
 
-        modes = device_map[device]
+        device_entry = device_map[device]
+        modes = device_entry.get('modes', {})
         if mode not in modes:
             valid = ', '.join(sorted(modes))
             errors.append(
@@ -188,8 +198,8 @@ def resolve_snippets(
             )
             continue
 
-        entry = modes[mode]
-        snippet_name = entry['snippet']
+        mode_entry = modes[mode]
+        snippet_name = mode_entry['snippet']
         snippet_path = snippet_dir(snippet_name)
 
         if not snippet_path.is_dir():
@@ -199,7 +209,7 @@ def resolve_snippets(
             )
             continue
 
-        west_project = entry['west_project']
+        west_project = device_entry['west_project']
         west_error = validate_west_project(
             device, mode, west_project, west_projects,
         )
@@ -207,7 +217,7 @@ def resolve_snippets(
             errors.append(west_error)
             continue
 
-        if entry.get('board_overlay_required', False):
+        if mode_entry.get('board_overlay_required', False):
             if not snippet_has_board_overlay(snippet_path, board_name):
                 supported = sorted(
                     p.stem
@@ -224,12 +234,14 @@ def resolve_snippets(
                 )
                 continue
 
+        kconfig_backend = mode_entry['kconfig_backend']
+        cmake_args.append(f'-D{kconfig_backend}=y')
         snippets.append(snippet_name)
 
     if errors:
         raise ValueError('\n'.join(errors))
 
-    return snippets
+    return snippets, cmake_args
 
 
 def split_west_and_cmake_extra(extra_args: list[str]) -> tuple[list[str], list[str]]:
@@ -247,6 +259,7 @@ def split_west_and_cmake_extra(extra_args: list[str]) -> tuple[list[str], list[s
 def build_west_command(
     board: str,
     snippets: list[str],
+    cmake_kconfig_args: list[str],
     build_dir: str | None,
     pristine: str | None,
     extra_args: list[str],
@@ -268,9 +281,10 @@ def build_west_command(
     cmd.extend(west_extra)
     cmd.append(str(APP_ROOT))
 
-    if cmake_extra:
+    all_cmake = cmake_kconfig_args + cmake_extra
+    if all_cmake:
         cmd.append('--')
-        cmd.extend(cmake_extra)
+        cmd.extend(all_cmake)
 
     return cmd
 
@@ -291,10 +305,11 @@ class Dbuild(WestCommand):
             description=self.description,
             epilog=(
                 'dbuild is a thin wrapper around west build: it resolves device '
-                'snippets, then runs west build with the same flags you would use '
-                'directly. Any option not listed above is forwarded to west build '
-                '(for example: -t run, -c, -o=-j8). Use -- only when passing raw '
-                'cmake arguments, as with west build itself.\n\n'
+                'snippets and backend Kconfig symbols, then runs west build with '
+                'the same flags you would use directly. Any option not listed above '
+                'is forwarded to west build (for example: -t run, -c, -o=-j8). Use '
+                '-- only when passing additional raw cmake arguments, as with west '
+                'build itself.\n\n'
                 'Examples:\n'
                 '  west dbuild -b nucleo_u575zi_q\n'
                 '  west dbuild -b nucleo_u575zi_q -t run\n'
@@ -339,15 +354,19 @@ class Dbuild(WestCommand):
             devices_conf = parse_devices_conf(Path(args.devices_file))
             device_map = load_device_map(Path(args.device_map))
             validate_device_map(device_map)
-            snippets = resolve_snippets(devices_conf, device_map, args.board)
+            snippets, cmake_kconfig_args = resolve_build_config(
+                devices_conf, device_map, args.board,
+            )
         except (FileNotFoundError, ValueError) as exc:
             self.die(str(exc))
 
         self.inf('Resolved snippets:', ' '.join(snippets))
+        self.inf('Resolved backend Kconfig:', ' '.join(cmake_kconfig_args))
 
         cmd = build_west_command(
             args.board,
             snippets,
+            cmake_kconfig_args,
             args.build_dir,
             args.pristine,
             unknown,
