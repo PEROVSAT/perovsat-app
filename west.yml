@@ -19,6 +19,10 @@ manifest:
       remote: origin
       revision: main
 
+    - name: amu-driver
+      remote: origin
+      revision: main
+
   self:
     path: perovsat-app
     west-commands: dbuild/west-commands.yml
