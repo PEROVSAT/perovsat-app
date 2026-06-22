@@ -1,4 +1,0 @@
-name: imu-mock
-append:
-  EXTRA_CONF_FILE: imu-mock.conf
-  EXTRA_DTC_OVERLAY_FILE: imu-mock.overlay

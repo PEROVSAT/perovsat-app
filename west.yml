@@ -15,11 +15,11 @@ manifest:
           - cmsis
           - hal_stm32
 
-    - name: imu-driver
+    - name: mpu6050-driver
       remote: origin
       revision: main
 
-    - name: imu-mock-driver
+    - name: amu-driver
       remote: origin
       revision: main
 
