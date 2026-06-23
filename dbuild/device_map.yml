@@ -36,3 +36,11 @@ devices:
         snippet: mpu6050-hardware
         kconfig_backend: CONFIG_PEROVSAT_MPU6050_BACKEND_HARDWARE
         board_overlay_required: true
+
+  MODEM:
+    west_project: eyestar-driver
+    modes:
+      public-mock:
+        snippet: eyestar-public-mock
+        kconfig_backend: CONFIG_PEROVSAT_EYESTAR_S4_BACKEND_PUBLIC_MOCK
+        board_overlay_required: false
