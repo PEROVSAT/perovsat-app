@@ -1,0 +1,20 @@
+/ {
+	aliases {
+		amu = &amu_0;
+	};
+
+	i2c_emul_amu: i2c@102 {
+		compatible = "zephyr,i2c-emul-controller";
+		reg = <0x102 4>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <100000>;
+		status = "okay";
+
+		amu_0: amu@50 {
+			compatible = "aerospace,amu";
+			reg = <0x50>;
+			status = "okay";
+		};
+	};
+};

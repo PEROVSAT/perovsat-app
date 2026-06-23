@@ -44,3 +44,11 @@ devices:
         snippet: eyestar-public-mock
         kconfig_backend: CONFIG_PEROVSAT_EYESTAR_S4_BACKEND_PUBLIC_MOCK
         board_overlay_required: false
+
+  AMU:
+    west_project: amu-driver
+    modes:
+      public-mock:
+        snippet: amu-public-mock
+        kconfig_backend: CONFIG_PEROVSAT_AMU_BACKEND_PUBLIC_MOCK
+        board_overlay_required: false
