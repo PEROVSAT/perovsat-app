@@ -13,166 +13,172 @@ from west.commands import WestCommand
 from west.manifest import Manifest
 
 APP_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DEVICES_FILE = APP_ROOT / 'dbuild_devices.conf'
-DEFAULT_DEVICE_MAP = APP_ROOT / 'dbuild' / 'device_map.yml'
+DEFAULT_CONFIG = APP_ROOT / 'dbuild.yml'
 SNIPPETS_ROOT = APP_ROOT / 'snippets'
 DEFAULT_CMAKE_ARGS = ['-DCMAKE_EXPORT_COMPILE_COMMANDS=ON']
 
 
-def board_short_name(board: str) -> str:
-    '''Return the board short name, stripping revision and qualifiers.'''
-    return board.split('@')[0].split('/')[0]
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+class Dbuild(WestCommand):
+    def __init__(self):
+        super().__init__(
+            'dbuild',
+            'build with per-device modes from dbuild.yml',
+            description='Resolve per-device modes from dbuild.yml and run west build.',
+            accepts_unknown_args=True,
+        )
+
+    def do_add_parser(self, parser_adder):
+        parser = parser_adder.add_parser(
+            self.name,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=self.description,
+            epilog=(
+                'dbuild is a thin wrapper around west build: it resolves device '
+                'snippets and backend Kconfig symbols, then runs west build with '
+                'the same flags you would use directly. Any option not listed above '
+                'is forwarded to west build (for example: -t run, -c, -o=-j8). Use '
+                '-- only when passing additional raw cmake arguments, as with west '
+                'build itself.\n\n'
+                'Examples:\n'
+                '  west dbuild -b nucleo_u575zi_q\n'
+                '  west dbuild -b nucleo_u575zi_q -t run\n'
+                '  west dbuild -b nucleo_u575zi_q -- -DCONFIG_LOG_DEFAULT_LEVEL=4'
+            ),
+        )
+
+        parser.add_argument(
+            '-b', '--board', required=True,
+            help='board to build for (e.g. nucleo_u575zi_q)',
+        )
+        parser.add_argument(
+            '--config',
+            default=str(DEFAULT_CONFIG),
+            help='path to dbuild.yml (default: dbuild.yml)',
+        )
+        parser.add_argument(
+            '-d', '--build-dir',
+            help='build directory to create or use',
+        )
+        parser.add_argument(
+            '-p', '--pristine',
+            choices=['auto', 'always', 'never'],
+            default='always',
+            help='pristine build directory before building (default: always)',
+        )
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='print the resolved west build command without running it',
+        )
+
+        return parser
+
+    def do_run(self, args, unknown):
+        # 1. Load and validate dbuild.yml
+        try:
+            selections, device_map = load_dbuild_config(Path(args.config))
+            validate_device_map(device_map)
+        except (FileNotFoundError, ValueError) as exc:
+            self.die(str(exc))
+
+        # 2. Resolve selections to snippets and backend Kconfig CMake args
+        try:
+            snippets, cmake_kconfig_args = resolve_build_config(
+                selections, device_map, args.board,
+            )
+        except (FileNotFoundError, ValueError) as exc:
+            self.die(str(exc))
+
+        self.inf('Resolved snippets:', ' '.join(snippets))
+        self.inf('Resolved backend Kconfig:', ' '.join(cmake_kconfig_args))
+
+        # 3. Construct and run west build
+        cmd = build_west_command(
+            args.board,
+            snippets,
+            cmake_kconfig_args,
+            args.build_dir,
+            args.pristine,
+            unknown,
+        )
+
+        if args.dry_run:
+            self.inf('Command:', shlex.join(cmd))
+            return
+
+        self.inf('Running:', shlex.join(cmd))
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as exc:
+            sys.exit(exc.returncode)
 
 
-def parse_devices_conf(path: Path) -> dict[str, str]:
-    '''Parse KEY=VALUE lines from dbuild_devices.conf.'''
-    devices: dict[str, str] = {}
+# ── Configuration ─────────────────────────────────────────────────────────────
 
+def load_dbuild_config(path: Path) -> tuple[dict[str, str], dict]:
+    '''Load dbuild.yml and return (selections, device_map).'''
     if not path.is_file():
-        raise FileNotFoundError(f'devices file not found: {path}')
-
-    for line_no, raw in enumerate(path.read_text().splitlines(), start=1):
-        line = raw.strip()
-        if not line or line.startswith('#'):
-            continue
-        if '=' not in line:
-            raise ValueError(f'{path}:{line_no}: expected KEY=VALUE, got: {raw!r}')
-
-        key, value = line.split('=', 1)
-        key = key.strip()
-        value = value.strip().lower()
-
-        if not key:
-            raise ValueError(f'{path}:{line_no}: empty device name')
-        if key in devices:
-            raise ValueError(f'{path}:{line_no}: duplicate device {key!r}')
-
-        devices[key] = value
-
-    if not devices:
-        raise ValueError(f'{path}: no device entries found')
-
-    return devices
-
-
-def load_device_map(path: Path) -> dict:
-    '''Load device_map.yml.'''
-    if not path.is_file():
-        raise FileNotFoundError(f'device map not found: {path}')
+        raise FileNotFoundError(f'dbuild config not found: {path}')
 
     with path.open() as f:
         data = yaml.safe_load(f)
 
-    if not isinstance(data, dict) or 'devices' not in data:
-        raise ValueError(f'{path}: missing top-level "devices" key')
+    if not isinstance(data, dict):
+        raise ValueError(f'{path}: expected a YAML mapping at the top level')
+    if 'selections' not in data:
+        raise ValueError(f'{path}: missing required top-level "selections" key')
+    if 'devices' not in data:
+        raise ValueError(f'{path}: missing required top-level "devices" key')
 
-    return data['devices']
+    selections = data['selections']
+    if not isinstance(selections, dict) or not selections:
+        raise ValueError(f'{path}: "selections" must be a non-empty mapping')
+
+    return {k: str(v).lower() for k, v in selections.items()}, data['devices']
 
 
 def validate_device_map(device_map: dict) -> None:
-    '''Ensure every device and mode entry defines required fields.'''
+    '''Ensure every device entry and its modes define required fields.'''
     errors: list[str] = []
 
     for device, entry in device_map.items():
         if not isinstance(entry, dict):
-            errors.append(f'device {device!r}: expected a device entry map')
+            errors.append(f'device {device!r}: expected a mapping')
             continue
 
         if 'west_project' not in entry:
-            errors.append(f'device {device!r}: missing required west_project')
+            errors.append(f'device {device!r}: missing required "west_project"')
 
         modes = entry.get('modes')
         if not isinstance(modes, dict) or not modes:
-            errors.append(f'device {device!r}: missing or empty modes map')
+            errors.append(f'device {device!r}: missing or empty "modes" mapping')
             continue
 
         for mode, mode_entry in modes.items():
             if not isinstance(mode_entry, dict):
                 errors.append(f'device {device!r} mode {mode!r}: invalid entry')
                 continue
-            if 'snippet' not in mode_entry:
-                errors.append(
-                    f'device {device!r} mode {mode!r}: missing required snippet'
-                )
-            if 'kconfig_backend' not in mode_entry:
-                errors.append(
-                    f'device {device!r} mode {mode!r}: missing required kconfig_backend'
-                )
+            for field in ('snippet', 'kconfig_backend'):
+                if field not in mode_entry:
+                    errors.append(
+                        f'device {device!r} mode {mode!r}: missing required "{field}"'
+                    )
 
     if errors:
         raise ValueError('\n'.join(errors))
 
 
-def snippet_dir(snippet_name: str) -> Path:
-    return SNIPPETS_ROOT / snippet_name
-
-
-def load_west_project_index() -> dict:
-    '''Return a name -> Project map for all west manifest projects.'''
-    manifest = Manifest.from_file()
-    return {project.name: project for project in manifest.get_projects([])}
-
-
-def validate_west_project(
-    device: str,
-    mode: str,
-    west_project: str,
-    west_projects: dict,
-) -> str | None:
-    '''Return an error message if a required west project is unavailable.'''
-    if west_project not in west_projects:
-        return (
-            f'device_map.yml references west project {west_project!r} for '
-            f'{device!r}, but it is not listed in west.yml'
-        )
-
-    project = west_projects[west_project]
-    if not project.is_cloned():
-        return (
-            f'device {device!r} mode {mode!r} requires west project '
-            f'{west_project!r}, which is not cloned in this workspace. '
-            f'If you lack access, choose a different mode in dbuild_devices.conf. '
-            f'If you should have access, run: west update'
-        )
-
-    module_yml = Path(project.abspath) / 'zephyr' / 'module.yml'
-    if not module_yml.is_file():
-        return (
-            f'device {device!r} mode {mode!r} requires west project '
-            f'{west_project!r}, but {module_yml} is missing'
-        )
-
-    return None
-
-
-def snippet_has_board_overlay(snippet_path: Path, board: str) -> bool:
-    '''Return True if the snippet has board overlay coverage for board.'''
-    overlay = snippet_path / 'boards' / f'{board}.overlay'
-    if not overlay.is_file():
-        return False
-
-    snippet_yml = snippet_path / 'snippet.yml'
-    if not snippet_yml.is_file():
-        return False
-
-    with snippet_yml.open() as f:
-        data = yaml.safe_load(f) or {}
-
-    boards = data.get('boards', {})
-    for key in boards:
-        if key.split('/')[0] == board:
-            return True
-
-    return False
-
+# ── Build resolution ──────────────────────────────────────────────────────────
 
 def resolve_build_config(
-    devices_conf: dict[str, str],
+    selections: dict[str, str],
     device_map: dict,
     board: str,
     west_projects: dict | None = None,
 ) -> tuple[list[str], list[str]]:
-    '''Resolve device modes to snippets and backend Kconfig CMake args.'''
+    '''Resolve device selections to snippets and backend Kconfig CMake args.'''
     board_name = board_short_name(board)
     snippets: list[str] = []
     cmake_args: list[str] = []
@@ -181,11 +187,11 @@ def resolve_build_config(
     if west_projects is None:
         west_projects = load_west_project_index()
 
-    for device, mode in devices_conf.items():
+    for device, mode in selections.items():
         if device not in device_map:
             errors.append(
-                f'unknown device {device!r} in dbuild_devices.conf '
-                f'(not defined in dbuild/device_map.yml)'
+                f'unknown device {device!r} in selections '
+                f'(not defined under "devices" in dbuild.yml)'
             )
             continue
 
@@ -211,9 +217,7 @@ def resolve_build_config(
             continue
 
         west_project = device_entry['west_project']
-        west_error = validate_west_project(
-            device, mode, west_project, west_projects,
-        )
+        west_error = validate_west_project(device, mode, west_project, west_projects)
         if west_error:
             errors.append(west_error)
             continue
@@ -221,22 +225,17 @@ def resolve_build_config(
         if mode_entry.get('board_overlay_required', False):
             if not snippet_has_board_overlay(snippet_path, board_name):
                 supported = sorted(
-                    p.stem
-                    for p in (snippet_path / 'boards').glob('*.overlay')
+                    p.stem for p in (snippet_path / 'boards').glob('*.overlay')
                 ) if (snippet_path / 'boards').is_dir() else []
 
-                supported_msg = (
-                    ', '.join(supported) if supported else '(none)'
-                )
                 errors.append(
                     f'device {device!r} mode {mode!r} (snippet {snippet_name!r}) '
                     f'is not supported on board {board_name!r}; '
-                    f'supported boards: {supported_msg}'
+                    f'supported boards: {", ".join(supported) if supported else "(none)"}'
                 )
                 continue
 
-        kconfig_backend = mode_entry['kconfig_backend']
-        cmake_args.append(f'-D{kconfig_backend}=y')
+        cmake_args.append(f'-D{mode_entry["kconfig_backend"]}=y')
         snippets.append(snippet_name)
 
     if errors:
@@ -245,17 +244,60 @@ def resolve_build_config(
     return snippets, cmake_args
 
 
-def split_west_and_cmake_extra(extra_args: list[str]) -> tuple[list[str], list[str]]:
-    '''Split passthrough args into west build options and cmake options.
+def validate_west_project(
+    device: str,
+    mode: str,
+    west_project: str,
+    west_projects: dict,
+) -> str | None:
+    '''Return an error message if a required west project is unavailable.'''
+    if west_project not in west_projects:
+        return (
+            f'dbuild.yml references west project {west_project!r} for '
+            f'{device!r}, but it is not listed in west.yml'
+        )
 
-    West build options (e.g. -t run, -c, -o=...) must appear before the source
-    directory. Only arguments after an explicit ``--`` are forwarded to cmake.
-    '''
-    if '--' in extra_args:
-        sep = extra_args.index('--')
-        return extra_args[:sep], extra_args[sep + 1:]
-    return extra_args, []
+    project = west_projects[west_project]
+    if not project.is_cloned():
+        return (
+            f'device {device!r} mode {mode!r} requires west project '
+            f'{west_project!r}, which is not cloned in this workspace. '
+            f'If you lack access, choose a different mode. '
+            f'If you should have access, run: west update'
+        )
 
+    module_yml = Path(project.abspath) / 'zephyr' / 'module.yml'
+    if not module_yml.is_file():
+        return (
+            f'device {device!r} mode {mode!r} requires west project '
+            f'{west_project!r}, but {module_yml} is missing'
+        )
+
+    return None
+
+
+def load_west_project_index() -> dict:
+    '''Return a name -> Project map for all west manifest projects.'''
+    manifest = Manifest.from_file()
+    return {project.name: project for project in manifest.get_projects([])}
+
+
+def snippet_has_board_overlay(snippet_path: Path, board: str) -> bool:
+    '''Return True if the snippet declares board overlay coverage for this board.'''
+    if not (snippet_path / 'boards' / f'{board}.overlay').is_file():
+        return False
+
+    snippet_yml = snippet_path / 'snippet.yml'
+    if not snippet_yml.is_file():
+        return False
+
+    with snippet_yml.open() as f:
+        data = yaml.safe_load(f) or {}
+
+    return any(key.split('/')[0] == board for key in data.get('boards', {}))
+
+
+# ── Command construction ──────────────────────────────────────────────────────
 
 def build_west_command(
     board: str,
@@ -282,102 +324,29 @@ def build_west_command(
     cmd.extend(west_extra)
     cmd.append(str(APP_ROOT))
 
-    all_cmake = DEFAULT_CMAKE_ARGS + cmake_kconfig_args + cmake_extra
     cmd.append('--')
-    cmd.extend(all_cmake)
+    cmd.extend(DEFAULT_CMAKE_ARGS + cmake_kconfig_args + cmake_extra)
 
     return cmd
 
 
-class Dbuild(WestCommand):
-    def __init__(self):
-        super().__init__(
-            'dbuild',
-            'build with per-device modes from dbuild_devices.conf',
-            description='Resolve per-device modes from dbuild_devices.conf and run west build.',
-            accepts_unknown_args=True,
-        )
+def split_west_and_cmake_extra(extra_args: list[str]) -> tuple[list[str], list[str]]:
+    '''Split passthrough args into west build options and cmake options.
 
-    def do_add_parser(self, parser_adder):
-        parser = parser_adder.add_parser(
-            self.name,
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description=self.description,
-            epilog=(
-                'dbuild is a thin wrapper around west build: it resolves device '
-                'snippets and backend Kconfig symbols, then runs west build with '
-                'the same flags you would use directly. Any option not listed above '
-                'is forwarded to west build (for example: -t run, -c, -o=-j8). Use '
-                '-- only when passing additional raw cmake arguments, as with west '
-                'build itself.\n\n'
-                'Examples:\n'
-                '  west dbuild -b nucleo_u575zi_q\n'
-                '  west dbuild -b nucleo_u575zi_q -t run\n'
-                '  west dbuild -b nucleo_u575zi_q -- -DCONFIG_LOG_DEFAULT_LEVEL=4'
-            ),
-        )
+    Only arguments after an explicit ``--`` are forwarded to cmake.
+    '''
+    if '--' in extra_args:
+        sep = extra_args.index('--')
+        return extra_args[:sep], extra_args[sep + 1:]
+    return extra_args, []
 
-        parser.add_argument(
-            '-b', '--board', required=True,
-            help='board to build for (short name, e.g. nucleo_u575zi_q)',
-        )
-        parser.add_argument(
-            '--devices-file',
-            default=str(DEFAULT_DEVICES_FILE),
-            help='path to dbuild_devices.conf (default: dbuild_devices.conf)',
-        )
-        parser.add_argument(
-            '-m', '--device-map',
-            default=str(DEFAULT_DEVICE_MAP),
-            help='path to device_map.yml (default: dbuild/device_map.yml)',
-        )
-        parser.add_argument(
-            '-d', '--build-dir',
-            help='build directory to create or use',
-        )
-        parser.add_argument(
-            '-p', '--pristine',
-            choices=['auto', 'always', 'never'],
-            default='always',
-            help='pristine build directory before building (default: always)',
-        )
-        parser.add_argument(
-            '--dry-run',
-            action='store_true',
-            help='print the resolved west build command without running it',
-        )
 
-        return parser
+# ── Utilities ─────────────────────────────────────────────────────────────────
 
-    def do_run(self, args, unknown):
-        try:
-            devices_conf = parse_devices_conf(Path(args.devices_file))
-            device_map = load_device_map(Path(args.device_map))
-            validate_device_map(device_map)
-            snippets, cmake_kconfig_args = resolve_build_config(
-                devices_conf, device_map, args.board,
-            )
-        except (FileNotFoundError, ValueError) as exc:
-            self.die(str(exc))
+def board_short_name(board: str) -> str:
+    '''Return the board short name, stripping revision and qualifiers.'''
+    return board.split('@')[0].split('/')[0]
 
-        self.inf('Resolved snippets:', ' '.join(snippets))
-        self.inf('Resolved backend Kconfig:', ' '.join(cmake_kconfig_args))
 
-        cmd = build_west_command(
-            args.board,
-            snippets,
-            cmake_kconfig_args,
-            args.build_dir,
-            args.pristine,
-            unknown,
-        )
-
-        if args.dry_run:
-            self.inf('Command:', shlex.join(cmd))
-            return
-
-        self.inf('Running:', shlex.join(cmd))
-        try:
-            subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError as exc:
-            sys.exit(exc.returncode)
+def snippet_dir(snippet_name: str) -> Path:
+    return SNIPPETS_ROOT / snippet_name
