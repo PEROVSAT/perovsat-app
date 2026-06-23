@@ -1,0 +1,20 @@
+/ {
+	aliases {
+		modem = &eyestar_s4_0;
+	};
+
+	i2c_emul_modem: i2c@101 {
+		compatible = "zephyr,i2c-emul-controller";
+		reg = <0x101 4>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <100000>;
+		status = "okay";
+
+		eyestar_s4_0: eyestar-s4@48 {
+			compatible = "nearspace-launch,eyestar-s4";
+			reg = <0x48>;
+			status = "okay";
+		};
+	};
+};

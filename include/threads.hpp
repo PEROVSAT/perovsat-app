@@ -6,6 +6,7 @@
 namespace ThreadConfig
 {
 constexpr size_t DefaultStackSize = 1024;
+constexpr size_t PayloadStackSize = 2048;
 
 // Priority levels (lower number = higher priority in Zephyr)
 constexpr int SysHealthPriority = 5;
