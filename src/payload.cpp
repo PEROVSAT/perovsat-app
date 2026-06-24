@@ -1,6 +1,6 @@
 #include "threads.hpp"
 
-#include <amu_api.h>
+#include <amu.h>
 
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
@@ -54,8 +54,8 @@ void payload_entry(void *p1, void *p2, void *p3)
 		int gyro_int = (int)gyro_mag;
 		int gyro_frac = (int)((gyro_mag - gyro_int) * 1000000);
 		LOG_INF("Angular Velocity: %d.%06d rad/s", gyro_int, gyro_frac);
-    
-    struct iv_sweep sweep;
+
+		iv_sweep_t sweep;
 		int ret = amu_do_iv_sweep(amu, &sweep);
 
 		if (ret != 0) {
