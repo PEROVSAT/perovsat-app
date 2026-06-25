@@ -23,6 +23,11 @@ manifest:
       remote: origin
       revision: main
 
+    - name: eyestar-driver
+      remote: origin
+      revision: main
+
+
   self:
     path: perovsat-app
     west-commands: dbuild/west-commands.yml
