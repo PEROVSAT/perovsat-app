@@ -1,8 +1,4 @@
 / {
-	aliases {
-		amu = &amu_0;
-	};
-
 	i2c_emul_amu: i2c@102 {
 		compatible = "zephyr,i2c-emul-controller";
 		reg = <0x102 4>;
@@ -11,10 +7,24 @@
 		clock-frequency = <100000>;
 		status = "okay";
 
-		amu_0: amu@50 {
+		amu0: amu@50 {
 			compatible = "aerospace,amu";
 			reg = <0x50>;
-			status = "okay";
+			/* Tells Zephyr this device provides channels, and it takes 1 argument (the channel ID) */
+			#io-channel-cells = <1>;
+		};
+	};
+
+	perovskite_payload {
+		compatible = "aerospace,perovskite-array";
+
+		cell_z_ps0: cell_z_ps0 {
+			/* Points to amu0, channel 0 */
+			io-channels = <&amu0 0>;
+		};
+		cell_z_ps1: cell_z_ps1 {
+			/* Points to amu0, channel 1 */
+			io-channels = <&amu0 1>;
 		};
 	};
 };

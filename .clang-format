@@ -82,6 +82,7 @@ IncludeCategories:
     Priority: 3
 IndentCaseLabels: false
 IndentGotoLabels: false
+IndentPPDirectives: BeforeHash
 IndentWidth: 8
 InsertBraces: true
 InsertNewlineAtEOF: true
