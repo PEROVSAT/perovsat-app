@@ -11,6 +11,7 @@ selections:
   IMU: public-mock
   MODEM: public-mock
   AMU: public-mock
+  FLASH: simulation
 
 devices:
   IMU:
@@ -44,3 +45,11 @@ devices:
       public-mock:
         snippet: amu-public-mock
         kconfig_backend: CONFIG_PEROVSAT_AMU_BACKEND_PUBLIC_MOCK
+
+  FLASH:
+    modes:
+      simulation:
+        snippet: nor-flash-sim
+      hardware:
+        snippet: nor-flash-hardware
+        board_overlay_required: true

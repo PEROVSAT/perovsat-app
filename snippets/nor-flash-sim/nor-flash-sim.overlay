@@ -1,0 +1,29 @@
+/ {
+	sim_flash: sim_flash@0 {
+		compatible = "zephyr,sim-flash";
+		reg = <0x00000000 DT_SIZE_K(256)>;
+		erase-value = <0xff>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		storage_partition: partition@0 {
+			label = "storage";
+			reg = <0x00000000 DT_SIZE_K(256)>;
+		};
+	};
+
+	fstab {
+		compatible = "zephyr,fstab";
+		lfs0: lfs0 {
+			compatible = "zephyr,fstab,littlefs";
+			mount-point = "/lfs";
+			partition = <&storage_partition>;
+			automount;
+			read-size = <16>;
+			prog-size = <16>;
+			cache-size = <64>;
+			lookahead-size = <32>;
+			block-cycles = <512>;
+		};
+	};
+};
