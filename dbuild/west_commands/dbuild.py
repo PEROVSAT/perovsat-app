@@ -148,9 +148,6 @@ def validate_device_map(device_map: dict) -> None:
             errors.append(f'device {device!r}: expected a mapping')
             continue
 
-        if 'west_project' not in entry:
-            errors.append(f'device {device!r}: missing required "west_project"')
-
         modes = entry.get('modes')
         if not isinstance(modes, dict) or not modes:
             errors.append(f'device {device!r}: missing or empty "modes" mapping')
@@ -160,11 +157,10 @@ def validate_device_map(device_map: dict) -> None:
             if not isinstance(mode_entry, dict):
                 errors.append(f'device {device!r} mode {mode!r}: invalid entry')
                 continue
-            for field in ('snippet', 'kconfig_backend'):
-                if field not in mode_entry:
-                    errors.append(
-                        f'device {device!r} mode {mode!r}: missing required "{field}"'
-                    )
+            if 'snippet' not in mode_entry:
+                errors.append(
+                    f'device {device!r} mode {mode!r}: missing required "snippet"'
+                )
 
     if errors:
         raise ValueError('\n'.join(errors))
@@ -216,11 +212,12 @@ def resolve_build_config(
             )
             continue
 
-        west_project = device_entry['west_project']
-        west_error = validate_west_project(device, mode, west_project, west_projects)
-        if west_error:
-            errors.append(west_error)
-            continue
+        west_project = device_entry.get('west_project')
+        if west_project:
+            west_error = validate_west_project(device, mode, west_project, west_projects)
+            if west_error:
+                errors.append(west_error)
+                continue
 
         if mode_entry.get('board_overlay_required', False):
             if not snippet_has_board_overlay(snippet_path, board_name):
@@ -235,7 +232,9 @@ def resolve_build_config(
                 )
                 continue
 
-        cmake_args.append(f'-D{mode_entry["kconfig_backend"]}=y')
+        kconfig_backend = mode_entry.get('kconfig_backend')
+        if kconfig_backend:
+            cmake_args.append(f'-D{kconfig_backend}=y')
         snippets.append(snippet_name)
 
     if errors:

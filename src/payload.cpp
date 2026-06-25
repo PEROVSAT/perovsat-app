@@ -72,6 +72,25 @@ void payload_entry(void *p1, void *p2, void *p3)
 
 		int ret = amu_do_iv_sweep(&cell_z_ps0_spec, &z_ps0_sweep);
 
+		// --- NOR flash / LittleFS example (uncomment to use) ---
+		// #include <zephyr/fs/fs.h>
+		//
+		// struct fs_file_t file;
+		// fs_file_t_init(&file);
+		//
+		// int ret = fs_open(&file, "/lfs/data.bin", FS_O_CREATE | FS_O_RDWR);
+		// if (ret < 0) {
+		//     LOG_ERR("fs_open failed: %d", ret);
+		// } else {
+		//     uint8_t buf[] = {0xDE, 0xAD, 0xBE, 0xEF};
+		//     fs_write(&file, buf, sizeof(buf));
+		//     fs_seek(&file, 0, FS_SEEK_SET);
+		//     uint8_t read_buf[4];
+		//     fs_read(&file, read_buf, sizeof(read_buf));
+		//     fs_close(&file);
+		// }
+		// --- end example ---
+
 		if (ret != 0) {
 			LOG_ERR("IV sweep failed: %d", ret);
 		} else {

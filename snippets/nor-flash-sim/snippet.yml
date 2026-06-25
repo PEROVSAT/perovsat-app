@@ -1,0 +1,4 @@
+name: nor-flash-sim
+append:
+  EXTRA_CONF_FILE: nor-flash-sim.conf
+  EXTRA_DTC_OVERLAY_FILE: nor-flash-sim.overlay
