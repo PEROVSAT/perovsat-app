@@ -15,6 +15,7 @@ target_include_directories(app PRIVATE
 target_sources(app PRIVATE
     src/main.cpp
     src/system_health.cpp
+    src/watchdog.cpp
     src/payload.cpp
     src/dfa.cpp
     src/communications.cpp
