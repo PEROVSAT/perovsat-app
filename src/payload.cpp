@@ -1,4 +1,5 @@
 #include "threads.hpp"
+#include "watchdog.hpp"
 
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
@@ -23,6 +24,9 @@ void payload_entry(void *p1, void *p2, void *p3)
 	struct sensor_value gyro[3];
 
 	while (1) {
+		/* Prove forward progress once per loop iteration. */
+		health::Watchdog::check_in(health::MonitoredThread::Payload);
+
 		sensor_sample_fetch(imu);
 		sensor_channel_get(imu, SENSOR_CHAN_ACCEL_XYZ, accel);
 		sensor_channel_get(imu, SENSOR_CHAN_GYRO_XYZ, gyro);
