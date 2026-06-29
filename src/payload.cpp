@@ -17,7 +17,6 @@ void payload_entry(void *p1, void *p2, void *p3)
 {
 	const struct device *imu = DEVICE_DT_GET(DT_ALIAS(imu));
 	static const struct amu_dt_spec cell_z_ps0_spec = AMU_DT_SPEC_GET(DT_NODELABEL(cell_z_ps0));
-	static const struct amu_dt_spec cell_z_ps1_spec = AMU_DT_SPEC_GET(DT_NODELABEL(cell_z_ps1));
 
 	LOG_INF("Payload Thread Started");
 
@@ -31,16 +30,10 @@ void payload_entry(void *p1, void *p2, void *p3)
 		return;
 	}
 
-	if (!device_is_ready(cell_z_ps1_spec.dev)) {
-		LOG_ERR("AMU for z_ps1 not ready");
-		return;
-	}
-
 	struct sensor_value accel[3];
 	struct sensor_value gyro[3];
 
 	iv_sweep_t z_ps0_sweep;
-	iv_sweep_t z_ps1_sweep;
 
 	while (1) {
 		/* Prove forward progress once per loop iteration. */

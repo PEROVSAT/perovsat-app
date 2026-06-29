@@ -1,0 +1,25 @@
+/ {
+	perovskite_payload {
+		compatible = "aerospace,perovskite-array";
+
+		cell_z_ps0: cell_z_ps0 {
+			io-channels = <&amu0 0>;
+		};
+	};
+};
+
+&i2c1 {
+	status = "okay";
+
+	amu0: amu@f {
+		compatible = "aerospace,amu";
+		reg = <0x0f>;
+		#io-channel-cells = <1>;
+		status = "okay";
+	};
+};
+
+
+&i2c2 {
+	status = "okay";
+};

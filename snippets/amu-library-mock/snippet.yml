@@ -1,0 +1,4 @@
+name: amu-library-mock
+append:
+  EXTRA_CONF_FILE: amu-library-mock.conf
+  EXTRA_DTC_OVERLAY_FILE: amu-library-mock.overlay
