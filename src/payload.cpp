@@ -87,9 +87,9 @@ void payload_entry(void *p1, void *p2, void *p3)
 		if (ret != 0) {
 			LOG_ERR("IV sweep failed: %d", ret);
 		} else {
-			LOG_INF("IV sweep: tsensor %.1f->%.1f C, time %u->%u ms",
+			LOG_INF("IV sweep: tsensor %.1f->%.1f C, at time %u ms",
 				(double)z_ps0_sweep.tsensor_start, (double)z_ps0_sweep.tsensor_end,
-				z_ps0_sweep.time_start, z_ps0_sweep.time_end);
+				z_ps0_sweep.time_start);
 			LOG_INF("IV point 0: V=%.3f V, I=%.3f A", (double)z_ps0_sweep.voltage[0],
 				(double)z_ps0_sweep.current[0]);
 			LOG_INF("IV point %d: V=%.3f V, I=%.3f A", IV_POINTS - 1,

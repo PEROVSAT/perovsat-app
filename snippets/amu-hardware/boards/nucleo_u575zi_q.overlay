@@ -11,11 +11,22 @@
 &i2c1 {
 	status = "okay";
 
-	amu0: amu@f {
+amu0: amu@f {
 		compatible = "aerospace,amu";
 		reg = <0x0f>;
 		#io-channel-cells = <1>;
 		status = "okay";
+
+		// Values from Kerry
+		amu-type = <1>; // Log Linear
+		amu-delay = <1>;
+		amu-ratio = <75>;
+		amu-power = <0>;
+		amu-dac-gain = <1>;
+		amu-sweep-averages = <1>;
+		amu-adc-averages = <4>;
+		amu-am0-mw = <1366100>;
+		amu-area-ucm2 = <4>;
 	};
 };
 
