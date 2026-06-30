@@ -1,11 +1,33 @@
 #include "watchdog.hpp"
-
+#include "payload.hpp"
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(watchdog, LOG_LEVEL_INF);
 
 namespace health
 {
+
+namespace
+{
+
+/*
+ * The implication table. Walked once per heartbeat to update affected devices.
+ *
+ * Add entries here when a thread starts reporting a new error bit that
+ * implicates a device. Order does not matter; "worst wins" is applied below.
+ */
+constexpr DeviceImplication kImplications[] = {
+	{MonitoredThread::Payload, payload::ErrAmuTimeout, MonitoredDevice::Amu,
+	 HealthStatus::Partial},
+	{MonitoredThread::Payload, payload::ErrImuBadData, MonitoredDevice::Imu,
+	 HealthStatus::Partial},
+	{MonitoredThread::Payload, payload::ErrLittlefsWrite, MonitoredDevice::NorFlash,
+	 HealthStatus::Dead},
+};
+
+constexpr size_t kImplicationCount = sizeof(kImplications) / sizeof(kImplications[0]);
+
+} // anonymous namespace
 
 /*
  * Shared heartbeat queue. K_MSGQ_DEFINE statically allocates the ring buffer at
@@ -90,6 +112,15 @@ HealthStatus Watchdog::status_of(MonitoredThread id) const
 	return HealthStatus::Nominal;
 }
 
+HealthStatus Watchdog::status_of(MonitoredDevice id) const
+{
+	const size_t i = static_cast<size_t>(id);
+	if (i >= MonitoredDeviceCount) {
+		return HealthStatus::Dead;
+	}
+	return device_status_[i];
+}
+
 void Watchdog::record(const Heartbeat &hb)
 {
 	if (hb.thread_id >= MonitoredThreadCount) {
@@ -106,6 +137,8 @@ void Watchdog::record(const Heartbeat &hb)
 
 	s.recent_errors[s.recent_errors_idx] = hb.errors;
 	s.recent_errors_idx = (s.recent_errors_idx + 1) % RecentErrorsWindow;
+
+	apply_device_implications(static_cast<MonitoredThread>(hb.thread_id), hb.errors);
 }
 
 void Watchdog::evaluate(uint32_t now)
@@ -156,6 +189,31 @@ uint32_t Watchdog::combined_recent_errors(const Slot &s) const
 		combined |= s.recent_errors[i];
 	}
 	return combined;
+}
+
+void Watchdog::apply_device_implications(MonitoredThread id, uint32_t errors)
+{
+	for (size_t i = 0; i < kImplicationCount; ++i) {
+		const DeviceImplication &imp = kImplications[i];
+
+		if (imp.thread != id) {
+			continue;
+		}
+
+		if ((errors & imp.error_bits) == 0) {
+			continue;
+		}
+
+		const size_t dev_idx = static_cast<size_t>(imp.device);
+		if (dev_idx >= MonitoredDeviceCount) {
+			continue;
+		}
+
+		if (static_cast<uint8_t>(imp.implied) >
+		    static_cast<uint8_t>(device_status_[dev_idx])) {
+			device_status_[dev_idx] = imp.implied;
+		}
+	}
 }
 
 } // namespace health

@@ -25,6 +25,25 @@ enum class MonitoredThread : uint8_t {
 };
 
 /*
+ * Devices that the watchdog tracks indirectly through thread error reports.
+ *
+ * Devices do not check in themselves; their status is inferred from which
+ * threads have reported errors involving them.
+ */
+enum class MonitoredDevice : uint8_t {
+	Eps = 0,
+	Eyestar,
+	Amu,
+	Imu,
+	SunSensorPz,
+	SunSensorNx,
+	NorFlash,
+	Count,
+};
+
+constexpr size_t MonitoredDeviceCount = static_cast<size_t>(MonitoredDevice::Count);
+
+/*
  * Three-valued health status returned to the rest of the system.
  *
  *   Nominal  — running and reporting clean
@@ -84,6 +103,8 @@ class Watchdog
 
 	/* Three-valued status for a monitored thread. */
 	HealthStatus status_of(MonitoredThread id) const;
+	/* Three-valued status for a monitored device. */
+	HealthStatus status_of(MonitoredDevice id) const;
 
       private:
 	struct Slot {
@@ -109,7 +130,26 @@ class Watchdog
 
 	uint32_t combined_recent_errors(const Slot &s) const;
 
+	void apply_device_implications(MonitoredThread id, uint32_t errors);
+
 	Slot slots_[MonitoredThreadCount];
+
+	/* Per-device cached status. Updated from thread error reports during poll(). */
+	HealthStatus device_status_[MonitoredDeviceCount] = {HealthStatus::Nominal};
+};
+
+/*
+ * One entry in the thread-error to device-status mapping table.
+ *
+ * When a thread reports any of `error_bits` in its heartbeat, the named
+ * device's status is bumped to (at least) `implied`. The worst recent status
+ * wins per device.
+ */
+struct DeviceImplication {
+	MonitoredThread thread;
+	uint32_t error_bits;
+	MonitoredDevice device;
+	HealthStatus implied;
 };
 
 /* The single instance, defined in watchdog.cpp and owned by System Health. */
