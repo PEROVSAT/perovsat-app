@@ -71,7 +71,7 @@ class Watchdog
 	 *   startup_grace_ms  extra time allowed for the very first check-in
 	 */
 	void arm(MonitoredThread id, uint32_t epoch_ms, uint32_t max_missed_cycles,
-		 uint32_t startup_grace_ms);
+		 uint32_t startup_grace_ms, uint32_t critical_mask = 0);
 
 	/* Called by a worker at the top of its loop. Never blocks the caller. */
 	static void check_in(MonitoredThread id, uint32_t errors = 0);
@@ -98,6 +98,9 @@ class Watchdog
 		uint8_t recent_errors_idx = 0;
 
 		bool faulted = false; /* currently declared not working */
+
+		/* Per-thread critical-error mask: bits in this mask force Dead status. */
+		uint32_t critical_mask = 0;
 	};
 
 	void record(const Heartbeat &hb);

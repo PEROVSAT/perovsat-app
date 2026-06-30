@@ -16,7 +16,7 @@ K_MSGQ_DEFINE(heartbeat_msgq, sizeof(Heartbeat), HeartbeatQueueDepth, alignof(He
 Watchdog watchdog;
 
 void Watchdog::arm(MonitoredThread id, uint32_t epoch_ms, uint32_t max_missed_cycles,
-		   uint32_t startup_grace_ms)
+		   uint32_t startup_grace_ms, uint32_t critical_mask)
 {
 	const size_t i = static_cast<size_t>(id);
 	if (i >= MonitoredThreadCount) {
@@ -31,6 +31,7 @@ void Watchdog::arm(MonitoredThread id, uint32_t epoch_ms, uint32_t max_missed_cy
 	s.active = true;
 	s.seen_first = false;
 	s.faulted = false;
+	s.critical_mask = critical_mask;
 }
 
 void Watchdog::check_in(MonitoredThread id, uint32_t errors)
@@ -76,7 +77,13 @@ HealthStatus Watchdog::status_of(MonitoredThread id) const
 		return HealthStatus::Dead;
 	}
 
-	if (combined_recent_errors(slots_[i]) != 0) {
+	const uint32_t errors = combined_recent_errors(slots_[i]);
+
+	if ((errors & slots_[i].critical_mask) != 0) {
+		return HealthStatus::Dead;
+	}
+
+	if (errors != 0) {
 		return HealthStatus::Partial;
 	}
 
