@@ -65,6 +65,20 @@ bool Watchdog::is_faulted(MonitoredThread id) const
 	return slots_[i].faulted;
 }
 
+HealthStatus Watchdog::status_of(MonitoredThread id) const
+{
+	const size_t i = static_cast<size_t>(id);
+	if (i >= MonitoredThreadCount) {
+		return HealthStatus::Dead;
+	}
+
+	if (slots_[i].faulted) {
+		return HealthStatus::Dead;
+	}
+
+	return HealthStatus::Nominal;
+}
+
 void Watchdog::record(const Heartbeat &hb)
 {
 	if (hb.thread_id >= MonitoredThreadCount) {

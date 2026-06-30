@@ -24,6 +24,19 @@ enum class MonitoredThread : uint8_t {
 	Count,
 };
 
+/*
+ * Three-valued health status returned to the rest of the system.
+ *
+ *   Nominal  — running and reporting clean
+ *   Partial  — running but reporting some non-critical errors
+ *   Dead     — missed too many heartbeats OR reporting a critical error
+ */
+enum class HealthStatus : uint8_t {
+	Nominal = 0,
+	Partial,
+	Dead,
+};
+
 constexpr size_t MonitoredThreadCount = static_cast<size_t>(MonitoredThread::Count);
 
 /* Number of buffered check-ins. Sized for the busiest burst, not the thread count. */
@@ -65,6 +78,9 @@ class Watchdog
 
 	/* True once the named thread has been declared not working. */
 	bool is_faulted(MonitoredThread id) const;
+
+	/* Three-valued status for a monitored thread. */
+	HealthStatus status_of(MonitoredThread id) const;
 
       private:
 	struct Slot {
