@@ -1,11 +1,33 @@
 #include "watchdog.hpp"
-
+#include "payload.hpp"
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(watchdog, LOG_LEVEL_INF);
 
 namespace health
 {
+
+namespace
+{
+
+/*
+ * The implication table. Walked once per heartbeat to update affected devices.
+ *
+ * Add entries here when a thread starts reporting a new error bit that
+ * implicates a device. Order does not matter; "worst wins" is applied below.
+ */
+constexpr DeviceImplication kImplications[] = {
+	{MonitoredThread::Payload, payload::ErrAmuTimeout, MonitoredDevice::Amu,
+	 HealthStatus::Partial},
+	{MonitoredThread::Payload, payload::ErrImuBadData, MonitoredDevice::Imu,
+	 HealthStatus::Partial},
+	{MonitoredThread::Payload, payload::ErrLittlefsWrite, MonitoredDevice::NorFlash,
+	 HealthStatus::Dead},
+};
+
+constexpr size_t kImplicationCount = sizeof(kImplications) / sizeof(kImplications[0]);
+
+} // anonymous namespace
 
 /*
  * Shared heartbeat queue. K_MSGQ_DEFINE statically allocates the ring buffer at
@@ -16,7 +38,7 @@ K_MSGQ_DEFINE(heartbeat_msgq, sizeof(Heartbeat), HeartbeatQueueDepth, alignof(He
 Watchdog watchdog;
 
 void Watchdog::arm(MonitoredThread id, uint32_t epoch_ms, uint32_t max_missed_cycles,
-		   uint32_t startup_grace_ms)
+		   uint32_t startup_grace_ms, uint32_t critical_mask)
 {
 	const size_t i = static_cast<size_t>(id);
 	if (i >= MonitoredThreadCount) {
@@ -31,13 +53,15 @@ void Watchdog::arm(MonitoredThread id, uint32_t epoch_ms, uint32_t max_missed_cy
 	s.active = true;
 	s.seen_first = false;
 	s.faulted = false;
+	s.critical_mask = critical_mask;
 }
 
-void Watchdog::check_in(MonitoredThread id)
+void Watchdog::check_in(MonitoredThread id, uint32_t errors)
 {
 	Heartbeat hb;
 	hb.thread_id = static_cast<uint8_t>(id);
 	hb.uptime_ms = k_uptime_get_32();
+	hb.errors = errors;
 
 	/* K_NO_WAIT: the watchdog must never stall the thread it is watching. A
 	 * full queue means System Health is behind, which its own miss check will
@@ -64,6 +88,39 @@ bool Watchdog::is_faulted(MonitoredThread id) const
 	return slots_[i].faulted;
 }
 
+HealthStatus Watchdog::status_of(MonitoredThread id) const
+{
+	const size_t i = static_cast<size_t>(id);
+	if (i >= MonitoredThreadCount) {
+		return HealthStatus::Dead;
+	}
+
+	if (slots_[i].faulted) {
+		return HealthStatus::Dead;
+	}
+
+	const uint32_t errors = combined_recent_errors(slots_[i]);
+
+	if ((errors & slots_[i].critical_mask) != 0) {
+		return HealthStatus::Dead;
+	}
+
+	if (errors != 0) {
+		return HealthStatus::Partial;
+	}
+
+	return HealthStatus::Nominal;
+}
+
+HealthStatus Watchdog::status_of(MonitoredDevice id) const
+{
+	const size_t i = static_cast<size_t>(id);
+	if (i >= MonitoredDeviceCount) {
+		return HealthStatus::Dead;
+	}
+	return device_status_[i];
+}
+
 void Watchdog::record(const Heartbeat &hb)
 {
 	if (hb.thread_id >= MonitoredThreadCount) {
@@ -77,6 +134,11 @@ void Watchdog::record(const Heartbeat &hb)
 
 	s.last_seen_ms = hb.uptime_ms;
 	s.seen_first = true;
+
+	s.recent_errors[s.recent_errors_idx] = hb.errors;
+	s.recent_errors_idx = (s.recent_errors_idx + 1) % RecentErrorsWindow;
+
+	apply_device_implications(static_cast<MonitoredThread>(hb.thread_id), hb.errors);
 }
 
 void Watchdog::evaluate(uint32_t now)
@@ -118,6 +180,40 @@ void Watchdog::report_fault(MonitoredThread id)
 	LOG_ERR("watchdog: thread %u declared not working", static_cast<unsigned>(id));
 	/* TODO: escalate to FDIR (restart the thread / enter safe mode) once those
 	 * hooks exist. For now the fault is latched and observable via is_faulted(). */
+}
+
+uint32_t Watchdog::combined_recent_errors(const Slot &s) const
+{
+	uint32_t combined = 0;
+	for (size_t i = 0; i < RecentErrorsWindow; ++i) {
+		combined |= s.recent_errors[i];
+	}
+	return combined;
+}
+
+void Watchdog::apply_device_implications(MonitoredThread id, uint32_t errors)
+{
+	for (size_t i = 0; i < kImplicationCount; ++i) {
+		const DeviceImplication &imp = kImplications[i];
+
+		if (imp.thread != id) {
+			continue;
+		}
+
+		if ((errors & imp.error_bits) == 0) {
+			continue;
+		}
+
+		const size_t dev_idx = static_cast<size_t>(imp.device);
+		if (dev_idx >= MonitoredDeviceCount) {
+			continue;
+		}
+
+		if (static_cast<uint8_t>(imp.implied) >
+		    static_cast<uint8_t>(device_status_[dev_idx])) {
+			device_status_[dev_idx] = imp.implied;
+		}
+	}
 }
 
 } // namespace health
