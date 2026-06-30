@@ -42,6 +42,9 @@ constexpr size_t MonitoredThreadCount = static_cast<size_t>(MonitoredThread::Cou
 /* Number of buffered check-ins. Sized for the busiest burst, not the thread count. */
 constexpr size_t HeartbeatQueueDepth = 16;
 
+/* How many recent heartbeats' error masks we OR together for status. */
+constexpr size_t RecentErrorsWindow = 3;
+
 /* One check-in. Trivially copyable so it can travel through a k_msgq by value. */
 struct Heartbeat {
 	uint8_t thread_id;  /* index into the monitored-thread roster */
@@ -90,12 +93,18 @@ class Watchdog
 		uint32_t last_seen_ms = 0;
 		bool active = false;     /* armed and being monitored */
 		bool seen_first = false; /* has checked in at least once */
-		bool faulted = false;    /* currently declared not working */
+
+		uint32_t recent_errors[RecentErrorsWindow] = {0};
+		uint8_t recent_errors_idx = 0;
+
+		bool faulted = false; /* currently declared not working */
 	};
 
 	void record(const Heartbeat &hb);
 	void evaluate(uint32_t now);
 	void report_fault(MonitoredThread id);
+
+	uint32_t combined_recent_errors(const Slot &s) const;
 
 	Slot slots_[MonitoredThreadCount];
 };

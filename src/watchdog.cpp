@@ -76,6 +76,10 @@ HealthStatus Watchdog::status_of(MonitoredThread id) const
 		return HealthStatus::Dead;
 	}
 
+	if (combined_recent_errors(slots_[i]) != 0) {
+		return HealthStatus::Partial;
+	}
+
 	return HealthStatus::Nominal;
 }
 
@@ -92,6 +96,9 @@ void Watchdog::record(const Heartbeat &hb)
 
 	s.last_seen_ms = hb.uptime_ms;
 	s.seen_first = true;
+
+	s.recent_errors[s.recent_errors_idx] = hb.errors;
+	s.recent_errors_idx = (s.recent_errors_idx + 1) % RecentErrorsWindow;
 }
 
 void Watchdog::evaluate(uint32_t now)
@@ -133,6 +140,15 @@ void Watchdog::report_fault(MonitoredThread id)
 	LOG_ERR("watchdog: thread %u declared not working", static_cast<unsigned>(id));
 	/* TODO: escalate to FDIR (restart the thread / enter safe mode) once those
 	 * hooks exist. For now the fault is latched and observable via is_faulted(). */
+}
+
+uint32_t Watchdog::combined_recent_errors(const Slot &s) const
+{
+	uint32_t combined = 0;
+	for (size_t i = 0; i < RecentErrorsWindow; ++i) {
+		combined |= s.recent_errors[i];
+	}
+	return combined;
 }
 
 } // namespace health
