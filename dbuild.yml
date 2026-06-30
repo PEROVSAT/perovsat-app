@@ -1,0 +1,46 @@
+# dbuild.yml — device build configuration for west dbuild
+#
+# selections: which mode each device uses when building.
+#   This is the line you change day-to-day.
+#   Valid modes per device are listed under that device's `modes:` block below.
+#
+# devices: the complete map of devices, modes, snippets, and Kconfig backends.
+#   Extend this section when adding a new device or build mode.
+
+selections:
+  IMU: public-mock
+  MODEM: public-mock
+  AMU: public-mock
+
+devices:
+  IMU:
+    west_project: mpu6050-driver
+    modes:
+      public-mock:
+        snippet: mpu6050-public-mock
+        kconfig_backend: CONFIG_PEROVSAT_MPU6050_BACKEND_PUBLIC_MOCK
+      library-mock:
+        snippet: mpu6050-library-mock
+        kconfig_backend: CONFIG_PEROVSAT_MPU6050_BACKEND_LIBRARY_MOCK
+      simulation:
+        snippet: mpu6050-simulation
+        kconfig_backend: CONFIG_PEROVSAT_MPU6050_BACKEND_SIMULATION
+        board_overlay_required: true
+      hardware:
+        snippet: mpu6050-hardware
+        kconfig_backend: CONFIG_PEROVSAT_MPU6050_BACKEND_HARDWARE
+        board_overlay_required: true
+
+  MODEM:
+    west_project: eyestar-driver
+    modes:
+      public-mock:
+        snippet: eyestar-public-mock
+        kconfig_backend: CONFIG_PEROVSAT_EYESTAR_S4_BACKEND_PUBLIC_MOCK
+
+  AMU:
+    west_project: amu-driver
+    modes:
+      public-mock:
+        snippet: amu-public-mock
+        kconfig_backend: CONFIG_PEROVSAT_AMU_BACKEND_PUBLIC_MOCK
