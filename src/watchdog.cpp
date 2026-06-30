@@ -33,11 +33,12 @@ void Watchdog::arm(MonitoredThread id, uint32_t epoch_ms, uint32_t max_missed_cy
 	s.faulted = false;
 }
 
-void Watchdog::check_in(MonitoredThread id)
+void Watchdog::check_in(MonitoredThread id, uint32_t errors)
 {
 	Heartbeat hb;
 	hb.thread_id = static_cast<uint8_t>(id);
 	hb.uptime_ms = k_uptime_get_32();
+	hb.errors = errors;
 
 	/* K_NO_WAIT: the watchdog must never stall the thread it is watching. A
 	 * full queue means System Health is behind, which its own miss check will

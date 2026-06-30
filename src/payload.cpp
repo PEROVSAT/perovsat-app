@@ -23,9 +23,11 @@ void payload_entry(void *p1, void *p2, void *p3)
 	struct sensor_value accel[3];
 	struct sensor_value gyro[3];
 
+	uint32_t err_count = 0;
+
 	while (1) {
 		/* Prove forward progress once per loop iteration. */
-		health::Watchdog::check_in(health::MonitoredThread::Payload);
+		health::Watchdog::check_in(health::MonitoredThread::Payload, err_count);
 
 		sensor_sample_fetch(imu);
 		sensor_channel_get(imu, SENSOR_CHAN_ACCEL_XYZ, accel);

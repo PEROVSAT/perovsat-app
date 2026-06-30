@@ -33,6 +33,7 @@ constexpr size_t HeartbeatQueueDepth = 16;
 struct Heartbeat {
 	uint8_t thread_id;  /* index into the monitored-thread roster */
 	uint32_t uptime_ms; /* k_uptime_get_32() at send time */
+	uint32_t errors;    /* thread error count or flags */
 };
 
 /*
@@ -57,7 +58,7 @@ class Watchdog
 		 uint32_t startup_grace_ms);
 
 	/* Called by a worker at the top of its loop. Never blocks the caller. */
-	static void check_in(MonitoredThread id);
+	static void check_in(MonitoredThread id, uint32_t errors = 0);
 
 	/* Called by System Health every tick: drain the queue, then evaluate. */
 	void poll();
