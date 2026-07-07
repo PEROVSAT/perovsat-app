@@ -16,6 +16,7 @@ target_sources(app PRIVATE
     src/main.cpp
     src/system_health.cpp
     src/watchdog.cpp
+    src/health_fdir.cpp
     src/payload.cpp
     src/dfa.cpp
     src/communications.cpp
