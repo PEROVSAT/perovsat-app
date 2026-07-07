@@ -11,7 +11,7 @@
 &i2c1 {
 	status = "okay";
 
-amu0: amu@f {
+	amu0: amu@f {
 		compatible = "aerospace,amu";
 		reg = <0x0f>;
 		#io-channel-cells = <1>;

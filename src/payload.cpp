@@ -5,6 +5,7 @@
 
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/fs/fs.h>
 
 #include <math.h>
 
@@ -12,6 +13,31 @@ LOG_MODULE_REGISTER(payload, LOG_LEVEL_DBG);
 
 K_THREAD_DEFINE(payload_thread_id, ThreadConfig::PayloadStackSize, payload_entry, NULL, NULL, NULL,
 		ThreadConfig::PayloadPriority, 0, -1);
+
+int save_payload_reading(struct sensor_value *gyro, iv_sweep_t *sweep, uint32_t record_id)
+{
+	// TODO: Document file type
+	struct fs_file_t file;
+	fs_file_t_init(&file);
+
+	// atomic_get boot_count
+	// Form filename as "boot_count_record_id.raw" witout 0 padding
+
+	// Create file
+	// If
+
+	// int ret = fs_open(&file, "/lfs/data.bin", FS_O_CREATE | FS_O_RDWR);
+	// if (ret < 0) {
+	//     LOG_ERR("fs_open failed: %d", ret);
+	// } else {
+	//     uint8_t buf[] = {0xDE, 0xAD, 0xBE, 0xEF};
+	//     fs_write(&file, buf, sizeof(buf));
+	//     fs_seek(&file, 0, FS_SEEK_SET);
+	//     uint8_t read_buf[4];
+	//     fs_read(&file, read_buf, sizeof(read_buf));
+	//     fs_close(&file);
+	// }
+}
 
 void payload_entry(void *p1, void *p2, void *p3)
 {
@@ -34,6 +60,8 @@ void payload_entry(void *p1, void *p2, void *p3)
 	struct sensor_value gyro[3];
 
 	iv_sweep_t z_ps0_sweep;
+
+	uint32_t record_id = 0;
 
 	while (1) {
 		/* Prove forward progress once per loop iteration. */
@@ -66,22 +94,10 @@ void payload_entry(void *p1, void *p2, void *p3)
 		int ret = amu_do_iv_sweep(&cell_z_ps0_spec, &z_ps0_sweep);
 
 		// --- NOR flash / LittleFS example (uncomment to use) ---
-		// #include <zephyr/fs/fs.h>
 		//
 		// struct fs_file_t file;
 		// fs_file_t_init(&file);
 		//
-		// int ret = fs_open(&file, "/lfs/data.bin", FS_O_CREATE | FS_O_RDWR);
-		// if (ret < 0) {
-		//     LOG_ERR("fs_open failed: %d", ret);
-		// } else {
-		//     uint8_t buf[] = {0xDE, 0xAD, 0xBE, 0xEF};
-		//     fs_write(&file, buf, sizeof(buf));
-		//     fs_seek(&file, 0, FS_SEEK_SET);
-		//     uint8_t read_buf[4];
-		//     fs_read(&file, read_buf, sizeof(read_buf));
-		//     fs_close(&file);
-		// }
 		// --- end example ---
 
 		if (ret != 0) {
@@ -90,13 +106,13 @@ void payload_entry(void *p1, void *p2, void *p3)
 			LOG_INF("IV sweep: tsensor %.1f->%.1f C, at time %u ms",
 				(double)z_ps0_sweep.tsensor_start, (double)z_ps0_sweep.tsensor_end,
 				z_ps0_sweep.time_start);
-			LOG_INF("IV point 0: V=%.3f V, I=%.3f A", (double)z_ps0_sweep.voltage[0],
-				(double)z_ps0_sweep.current[0]);
-			LOG_INF("IV point %d: V=%.3f V, I=%.3f A", IV_POINTS - 1,
-				(double)z_ps0_sweep.voltage[IV_POINTS - 1],
-				(double)z_ps0_sweep.current[IV_POINTS - 1]);
+			for (int i = 0; i < IV_POINTS; i++) {
+				LOG_INF("IV point %d: V=%.3f V, I=%.3f A", i,
+					(double)z_ps0_sweep.voltage[i],
+					(double)z_ps0_sweep.current[i]);
+			}
 		}
 
-		k_sleep(K_MSEC(2000));
+		k_sleep(K_MSEC(10000));
 	}
 }

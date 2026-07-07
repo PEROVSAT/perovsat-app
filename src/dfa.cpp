@@ -1,6 +1,9 @@
 #include "threads.hpp"
 #include <zephyr/logging/log.h>
 
+// NOTE: It's important for delivery guarantees that dfa output filename is identical to the payload
+// input's
+
 LOG_MODULE_REGISTER(dfa, LOG_LEVEL_DBG);
 
 K_THREAD_DEFINE(dfa_thread_id, ThreadConfig::DefaultStackSize, dfa_entry, NULL, NULL, NULL,
