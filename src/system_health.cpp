@@ -136,7 +136,7 @@ void system_health_entry(void *p1, void *p2, void *p3)
 		return;
 	}
 
-	LOG_INF("Boot count: %d", atomic_get(&boot_count));
+	LOG_INF("Boot count: %ld", atomic_get(&boot_count));
 
 	/* Starting a thread is its watchdog registration: arm first, then start.
 	 * (epoch_ms, max_missed_cycles, startup_grace_ms) */

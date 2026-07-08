@@ -1,14 +1,28 @@
 / {
-	sim_flash: sim_flash@0 {
+	sim_flash_controller: sim_flash_controller {
 		compatible = "zephyr,sim-flash";
-		reg = <0x00000000 DT_SIZE_K(256)>;
-		erase-value = <0xff>;
+
 		#address-cells = <1>;
 		#size-cells = <1>;
+		erase-value = <0xff>;
 
-		storage_partition: partition@0 {
-			label = "storage";
+		flash_sim0: flash_sim@0 {
+			compatible = "soc-nv-flash";
 			reg = <0x00000000 DT_SIZE_K(256)>;
+
+			erase-block-size = <4096>;
+			write-block-size = <4>;
+
+			partitions {
+				compatible = "fixed-partitions";
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				sim_storage_partition: partition@0 {
+					label = "sim-storage";
+					reg = <0x00000000 DT_SIZE_K(256)>;
+				};
+			};
 		};
 	};
 
@@ -17,7 +31,7 @@
 		lfs0: lfs0 {
 			compatible = "zephyr,fstab,littlefs";
 			mount-point = "/lfs";
-			partition = <&storage_partition>;
+			partition = <&sim_storage_partition>;
 			automount;
 			read-size = <16>;
 			prog-size = <16>;

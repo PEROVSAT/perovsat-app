@@ -11,7 +11,7 @@ selections:
   IMU: public-mock
   MODEM: public-mock
   AMU: hardware
-  FLASH: simulation
+  FLASH: virtual
 
 devices:
   IMU:
@@ -54,5 +54,5 @@ devices:
 
   FLASH:
     modes:
-      simulation:
+      virtual:
         snippet: nor-flash-sim

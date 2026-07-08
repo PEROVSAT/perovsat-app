@@ -5,8 +5,8 @@
 // 1. Centralized Configuration
 namespace ThreadConfig
 {
-constexpr size_t DefaultStackSize = 1024;
-constexpr size_t PayloadStackSize = 2048;
+constexpr size_t DefaultStackSize = 8192;
+constexpr size_t PayloadStackSize = 16384;
 
 // Priority levels (lower number = higher priority in Zephyr)
 constexpr int SysHealthPriority = 5;

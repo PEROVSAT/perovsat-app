@@ -7,24 +7,85 @@
 		clock-frequency = <100000>;
 		status = "okay";
 
-		amu0: amu@50 {
+		amu_z_ref0: amu@8 {
 			compatible = "aerospace,amu";
-			reg = <0x50>;
-			/* Tells Zephyr this device provides channels, and it takes 1 argument (the channel ID) */
-			#io-channel-cells = <1>;
+			reg = <0x08>;
+			status = "okay";
 		};
-	};
-
-	perovskite_payload {
-		compatible = "aerospace,perovskite-array";
-
-		cell_z_ps0: cell_z_ps0 {
-			/* Points to amu0, channel 0 */
-			io-channels = <&amu0 0>;
+		amu_z_ref1: amu@9 {
+			compatible = "aerospace,amu";
+			reg = <0x09>;
+			status = "okay";
 		};
-		cell_z_ps1: cell_z_ps1 {
-			/* Points to amu0, channel 1 */
-			io-channels = <&amu0 1>;
+		amu_z_ps1: amu@a {
+			compatible = "aerospace,amu";
+			reg = <0x0a>;
+			status = "okay";
+		};
+		amu_z_ps2: amu@b {
+			compatible = "aerospace,amu";
+			reg = <0x0b>;
+			status = "okay";
+		};
+		amu_z_ps3: amu@c {
+			compatible = "aerospace,amu";
+			reg = <0x0c>;
+			status = "okay";
+		};
+		amu_z_ps4: amu@d {
+			compatible = "aerospace,amu";
+			reg = <0x0d>;
+			status = "okay";
+		};
+		amu_z_ps5: amu@e {
+			compatible = "aerospace,amu";
+			reg = <0x0e>;
+			status = "okay";
+		};
+		amu_z_ps0: amu@f {
+			compatible = "aerospace,amu";
+			reg = <0x0f>;
+			status = "okay";
+		};
+		amu_x_ref0: amu@10 {
+			compatible = "aerospace,amu";
+			reg = <0x10>;
+			status = "okay";
+		};
+		amu_x_ref1: amu@11 {
+			compatible = "aerospace,amu";
+			reg = <0x11>;
+			status = "okay";
+		};
+		amu_x_ps0: amu@12 {
+			compatible = "aerospace,amu";
+			reg = <0x12>;
+			status = "okay";
+		};
+		amu_x_ps1: amu@13 {
+			compatible = "aerospace,amu";
+			reg = <0x13>;
+			status = "okay";
+		};
+		amu_x_ps2: amu@14 {
+			compatible = "aerospace,amu";
+			reg = <0x14>;
+			status = "okay";
+		};
+		amu_x_ps3: amu@15 {
+			compatible = "aerospace,amu";
+			reg = <0x15>;
+			status = "okay";
+		};
+		amu_x_ps4: amu@16 {
+			compatible = "aerospace,amu";
+			reg = <0x16>;
+			status = "okay";
+		};
+		amu_x_ps5: amu@17 {
+			compatible = "aerospace,amu";
+			reg = <0x17>;
+			status = "okay";
 		};
 	};
 };
