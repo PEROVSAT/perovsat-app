@@ -1,4 +1,5 @@
 #include "threads.hpp"
+#include "communications.hpp"
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -6,6 +7,26 @@
 #include "eyestar_s4.h"
 
 LOG_MODULE_REGISTER(comms, LOG_LEVEL_DBG);
+
+/*
+ * Binary latch (max count 1) rather than a counter: Comms only needs to know
+ * that "there is new work", not how many times DFA nudged it. Defined at file
+ * scope (Zephyr kernel objects are section-placed and belong at file scope, not
+ * inside a namespace). Whether Comms blocks on this in place of its fixed sleep
+ * is a Communications-thread change left for that increment; DFA already gives
+ * it here via comms::wake().
+ */
+K_SEM_DEFINE(comms_wake_sem, 0, 1);
+
+namespace comms
+{
+
+void wake(void)
+{
+	k_sem_give(&comms_wake_sem);
+}
+
+} // namespace comms
 
 K_THREAD_DEFINE(comms_thread_id, ThreadConfig::DefaultStackSize, comms_entry, NULL, NULL, NULL,
 		ThreadConfig::CommsPriority, 0, -1);

@@ -20,8 +20,13 @@ void system_health_entry(void *p1, void *p2, void *p3)
 			     &health::payload_supervised);
 	k_thread_start(payload_thread_id);
 
-	// health::watchdog.arm(health::MonitoredThread::Dfa, 1000, 3, 2000,
-	// &health::dfa_supervised); k_thread_start(dfa_thread_id);
+	/* Epoch mirrors the DFA loop cadence (single source of truth in
+	 * ThreadConfig); tolerate 3 missed windows, with one epoch of extra
+	 * first-pass grace. */
+	health::watchdog.arm(health::MonitoredThread::Dfa, ThreadConfig::DfaEpochMs, 3,
+			     ThreadConfig::DfaEpochMs + 5000, &health::dfa_supervised);
+	k_thread_start(dfa_thread_id);
+
 	// health::watchdog.arm(health::MonitoredThread::Comms, 600000, 2, 10000,
 	// 		     &health::comms_supervised);
 	// k_thread_start(comms_thread_id);

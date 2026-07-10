@@ -19,6 +19,8 @@ target_sources(app PRIVATE
     src/health_fdir.cpp
     src/payload.cpp
     src/dfa.cpp
+    src/dfa_processor.cpp
+    src/global_flags.cpp
     src/communications.cpp
     src/commands.cpp
 )

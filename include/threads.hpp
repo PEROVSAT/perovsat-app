@@ -14,6 +14,12 @@ constexpr int PayloadPriority = 6;
 constexpr int DfaPriority = 7;
 constexpr int CommsPriority = 8;
 constexpr int CommandsPriority = 9;
+
+// Per-thread loop cadence. Single source of truth: the thread sleeps this long
+// between passes AND System Health sizes the thread's watchdog epoch from it, so
+// the two can never drift apart. DFA's is the short end of the PDR's 1-5 min
+// budget, keeping the raw-payload backlog on the 128 KiB storage partition bounded.
+constexpr int DfaEpochMs = 60000;
 } // namespace ThreadConfig
 
 // 2. Entry Function Declarations

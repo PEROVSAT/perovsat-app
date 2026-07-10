@@ -55,6 +55,16 @@ enum : uint32_t {
 };
 } // namespace payload_err
 
+namespace dfa_err
+{
+enum : uint32_t {
+	FetchFail = 1u << 0,     /* could not read raw payload data from LittleFS */
+	TransformFail = 1u << 1, /* filtering / fit / compression stage failed */
+	SaveFail = 1u << 2,      /* could not write the processed batch to the outbox */
+	ReapFail = 1u << 3,      /* could not delete raw data already folded in */
+};
+} // namespace dfa_err
+
 namespace comms_err
 {
 enum : uint32_t {
