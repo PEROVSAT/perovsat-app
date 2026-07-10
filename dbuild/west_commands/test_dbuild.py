@@ -136,11 +136,10 @@ class TestValidateDeviceMap:
     def test_valid(self):
         db.validate_device_map(minimal_device_map())
 
-    def test_missing_west_project(self):
+    def test_missing_west_project_allowed(self):
         dm = minimal_device_map()
         del dm['IMU']['west_project']
-        with pytest.raises(ValueError, match='"west_project"'):
-            db.validate_device_map(dm)
+        db.validate_device_map(dm)
 
     def test_missing_snippet(self):
         dm = minimal_device_map()
@@ -148,11 +147,10 @@ class TestValidateDeviceMap:
         with pytest.raises(ValueError, match='"snippet"'):
             db.validate_device_map(dm)
 
-    def test_missing_kconfig_backend(self):
+    def test_missing_kconfig_backend_allowed(self):
         dm = minimal_device_map()
         del dm['IMU']['modes']['public-mock']['kconfig_backend']
-        with pytest.raises(ValueError, match='"kconfig_backend"'):
-            db.validate_device_map(dm)
+        db.validate_device_map(dm)
 
     def test_empty_modes(self):
         dm = minimal_device_map()
@@ -303,6 +301,45 @@ class TestResolveBuildConfig:
         assert set(snippets) == {'imu-snippet', 'modem-snippet'}
         assert '-DCONFIG_IMU=y' in cmake_args
         assert '-DCONFIG_MODEM=y' in cmake_args
+
+    def test_device_without_west_project(self, tmp_path):
+        snippet_root = tmp_path / 'snippets'
+        (snippet_root / 'flash-snippet').mkdir(parents=True)
+
+        dm = {
+            'FLASH': {
+                'modes': {
+                    'simulation': {'snippet': 'flash-snippet'},
+                },
+            },
+        }
+
+        with patch.object(db, 'SNIPPETS_ROOT', snippet_root):
+            snippets, cmake_args = db.resolve_build_config(
+                {'FLASH': 'simulation'}, dm, 'qemu_cortex_m3', west_projects={},
+            )
+
+        assert snippets == ['flash-snippet']
+        assert cmake_args == []
+
+    def test_device_without_kconfig_backend(self, tmp_path):
+        snippet_root = tmp_path / 'snippets'
+        (snippet_root / 'my-snippet').mkdir(parents=True)
+
+        proj = make_west_project(root=tmp_path / 'proj')
+        dm = minimal_device_map()
+        del dm['IMU']['modes']['public-mock']['kconfig_backend']
+
+        with patch.object(db, 'SNIPPETS_ROOT', snippet_root):
+            snippets, cmake_args = db.resolve_build_config(
+                {'IMU': 'public-mock'},
+                dm,
+                'nucleo_u575zi_q',
+                west_projects={'mpu6050-driver': proj},
+            )
+
+        assert snippets == ['my-snippet']
+        assert cmake_args == []
 
 
 # ── build_west_command ────────────────────────────────────────────────────────
