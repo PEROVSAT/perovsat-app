@@ -23,8 +23,8 @@ target_sources(app PRIVATE
     src/payload/payload.cpp
     src/payload/PayloadReading.cpp
 
-    src/dfa.cpp
-    src/dfa_processor.cpp
+    src/dfa/dfa.cpp
+    src/dfa/tasks.cpp
     src/global_flags.cpp
     src/communications.cpp
     src/commands.cpp

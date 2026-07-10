@@ -17,6 +17,12 @@ namespace sys
  *   High     - surplus resources: run the heavier, higher-value analysis path.
  */
 enum class OpStatus : uint32_t {
+	/*
+	 * Collapses the DFA flowchart's two red outcomes -- "SAFE" and "LOW" --
+	 * into one value: both mean "do no analysis this epoch, preserve the
+	 * vehicle", so DFA treats them identically. Split into separate Safe and
+	 * Low values if the two ever need distinct behavior.
+	 */
 	SafeLow = 0,
 	Nominal,
 	High,
