@@ -17,7 +17,12 @@ target_sources(app PRIVATE
     src/system_health.cpp
     src/watchdog.cpp
     src/health_fdir.cpp
-    src/payload.cpp
+
+    src/payload/hw.cpp
+    src/payload/measurement.cpp
+    src/payload/payload.cpp
+    src/payload/PayloadReading.cpp
+
     src/dfa.cpp
     src/dfa_processor.cpp
     src/global_flags.cpp
