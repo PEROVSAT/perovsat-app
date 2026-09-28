@@ -1,0 +1,46 @@
+/ {
+	chosen {
+		zephyr,code-partition = &code_partition;
+	};
+
+	fstab {
+		compatible = "zephyr,fstab";
+
+		lfs0: lfs0 {
+			compatible = "zephyr,fstab,littlefs";
+			mount-point = "/lfs";
+			partition = <&storage_partition>;
+			automount;
+
+			read-size = <16>;
+			prog-size = <16>;
+			cache-size = <64>;
+			lookahead-size = <32>;
+			block-cycles = <512>;
+		};
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		/*
+		 * 1 MiB application image
+		 */
+		code_partition: partition@0 {
+			label = "code";
+			reg = <0x00000000 DT_SIZE_M(1)>;
+		};
+
+		/*
+		 * 3 MiB LittleFS
+		 */
+		storage_partition: partition@300000 {
+			label = "storage";
+			reg = <0x00300000 DT_SIZE_M(3)>;
+		};
+	};
+};

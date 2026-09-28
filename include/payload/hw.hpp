@@ -5,7 +5,7 @@
  * @brief DeviceTree-derived payload hardware configuration.
  */
 
-#include "payload/payload_types.hpp"
+#include "payload/payload.hpp"
 
 #include <zephyr/device.h>
 

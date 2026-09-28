@@ -44,7 +44,7 @@ void payload_entry(void *p1, void *p2, void *p3)
 
 	struct sensor_value gyro[3];
 	struct sensor_value accel[3];
-	iv_sweep_t sweeps[NUM_AMUS];
+	payload::iv_sweep_t sweeps[payload::NUM_AMUS];
 
 	while (1) {
 		health::Watchdog::check_in(health::MonitoredThread::Payload);
@@ -67,7 +67,7 @@ void payload_entry(void *p1, void *p2, void *p3)
 
 		// Power all AMUs that will be swept
 		for (size_t i = 0; i < payload::NUM_AMUS; ++i) {
-			if (payload::amus[i].face_bit & face_mask == 0U) {
+			if ((payload::amus[i].face_bit & face_mask) != 0U) {
 				// If it got selected, this would be where we turn on the AMU for
 				// sweeping
 			}
@@ -75,21 +75,19 @@ void payload_entry(void *p1, void *p2, void *p3)
 
 		// Read sweeps of powered AMUs
 		for (size_t i = 0; i < payload::NUM_AMUS; ++i) {
-			if (payload::amus[i].face_bit & face_mask == 0U) {
-				// If it got selected, this would be where we turn on the AMU for
-				// sweeping
-
+			if ((payload::amus[i].face_bit & face_mask) != 0U) {
 				while (!device_is_ready(payload::amus[i].dev))
 					; // TODO: This needs a failure timeout
 
-				amu_t *amu = amu_from_dev(config.dev);
+				amu_t *amu = amu_from_dev(payload::amus[i].dev);
 
 				if (amu == nullptr || amu_trigger_sweep(amu) != 0) {
-					return false;
+					LOG_WRN("AMU %u sweep failed", static_cast<unsigned>(i));
+					continue;
 				}
 
-				amu_get_sweep_meta(amu, &(sweeps[i])->meta); // TODO: Error handling
-				amu_get_sweep_iv(amu, &(sweeps[i])->iv);
+				amu_get_sweep_meta(amu, &sweeps[i].meta); // TODO: Error handling
+				amu_get_sweep_iv(amu, &sweeps[i].iv);
 
 				reading.add_sweep(&(sweeps[i]), i);
 			}
@@ -97,7 +95,7 @@ void payload_entry(void *p1, void *p2, void *p3)
 
 		// Turn off all AMUs
 		for (size_t i = 0; i < payload::NUM_AMUS; ++i) {
-			set_amu_power(payload::amus[i], false);
+			// TODO: set_amu_power(payload::amus[i], false);
 		}
 
 		// Tell PayloadReading to save data

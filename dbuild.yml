@@ -9,8 +9,8 @@
 
 selections:
   IMU: public-mock
-  AMU: hardware
-  FLASH: virtual
+  AMU: public-mock
+  FLASH: pico2
 
 devices:
   IMU:
@@ -48,3 +48,5 @@ devices:
     modes:
       virtual:
         snippet: nor-flash-sim
+      pico2:
+        snippet: nor-flash-pico2

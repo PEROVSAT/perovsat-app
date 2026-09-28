@@ -13,7 +13,7 @@
  * Payload bodies are written in ascending bit/index order.
  */
 
-#include "payload/payload_types.hpp"
+#include "payload/payload.hpp"
 
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/sys/util.h>
