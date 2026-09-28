@@ -2,20 +2,33 @@
 
 /**
  * @file hw.hpp
- * @brief DeviceTree-bound slot tables for payload hardware.
- *
- * Exposes `face_z` / `face_x` which map the configured hardware into stable
- * in-memory `FacePayload` tables. These tables are consumed by measurement code
- * and the payload thread.
+ * @brief DeviceTree-derived payload hardware configuration.
  */
 
 #include "payload/payload_types.hpp"
 
+#include <zephyr/device.h>
+
+#include <cstdint>
+
 namespace payload
 {
 
-/* Defined in hw.cpp from DeviceTree slot tables. */
-extern const FacePayload face_z;
-extern const FacePayload face_x;
+/*
+ * The array index is the AMU's payload index.  face_bit is generated directly
+ * from the shared DeviceTree `face` enum; C++ does not duplicate face names.
+ */
+struct AmuConfig {
+	const struct device *dev;
+	uint32_t face_bit;
+};
+
+extern AmuConfig amus[NUM_AMUS];
+
+/* Null when the `imu` alias is missing or the node is disabled. */
+extern const struct device *imu_dev;
+
+/* Populate amus[payload-index] from DeviceTree. Call once before sampling. */
+void init_amus();
 
 } // namespace payload

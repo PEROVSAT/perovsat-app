@@ -2,41 +2,26 @@
 
 /**
  * @file PayloadReading.cpp
- * @brief Serialization implementation for payload outbox records.
- *
- * Provides tmp + rename writes and a compact packed status mask describing
- * Disabled/Missing/Skipped/Error/Ok for each item in the record.
+ * @brief Indexed AMU sample mask plus the payloads selected by it.
  */
 
 #include <zephyr/fs/fs.h>
-#include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 
 #include <errno.h>
 #include <stdio.h>
-
-LOG_MODULE_DECLARE(payload);
+#include <string.h>
 
 namespace payload
 {
 
-uint64_t PayloadReading::pack_status(uint64_t mask, uint8_t index, ReadingStatus status)
-{
-	const uint64_t cleared = mask & ~(0x7ULL << (index * 3));
-	return cleared | ((static_cast<uint64_t>(status) & 0x7ULL) << (index * 3));
-}
-
-ReadingStatus PayloadReading::get_status(uint64_t mask, uint8_t index)
-{
-	return static_cast<ReadingStatus>((mask >> (index * 3)) & 0x7ULL);
-}
-
-ssize_t PayloadReading::write_all(struct fs_file_t *file, const void *data, size_t len)
+static ssize_t write_all(struct fs_file_t *file, const void *data, size_t len)
 {
 	const uint8_t *cursor = static_cast<const uint8_t *>(data);
 	size_t remaining = len;
 
 	while (remaining > 0) {
-		ssize_t written = fs_write(file, cursor, remaining);
+		const ssize_t written = fs_write(file, cursor, remaining);
 		if (written < 0) {
 			return written;
 		}
@@ -50,13 +35,13 @@ ssize_t PayloadReading::write_all(struct fs_file_t *file, const void *data, size
 	return static_cast<ssize_t>(len);
 }
 
-ssize_t PayloadReading::read_all(struct fs_file_t *file, void *data, size_t len)
+static ssize_t read_all(struct fs_file_t *file, void *data, size_t len)
 {
 	uint8_t *cursor = static_cast<uint8_t *>(data);
 	size_t remaining = len;
 
 	while (remaining > 0) {
-		ssize_t got = fs_read(file, cursor, remaining);
+		const ssize_t got = fs_read(file, cursor, remaining);
 		if (got < 0) {
 			return got;
 		}
@@ -70,138 +55,159 @@ ssize_t PayloadReading::read_all(struct fs_file_t *file, void *data, size_t len)
 	return static_cast<ssize_t>(len);
 }
 
-uint64_t PayloadReading::status_mask() const
+static int write_exact(struct fs_file_t *file, const void *data, size_t len)
 {
-	uint64_t mask = 0;
-
-	mask = pack_status(mask, static_cast<uint8_t>(StatusItem::Imu), imu.status);
-	mask = pack_status(mask, static_cast<uint8_t>(StatusItem::SunZ), face_z.sun.status);
-	mask = pack_status(mask, static_cast<uint8_t>(StatusItem::SunX), face_x.sun.status);
-
-	mask = pack_status(mask, static_cast<uint8_t>(StatusItem::ZRef0), face_z.ref[0].status);
-	mask = pack_status(mask, static_cast<uint8_t>(StatusItem::ZRef1), face_z.ref[1].status);
-	for (int i = 0; i < 6; i++) {
-		mask = pack_status(mask, static_cast<uint8_t>(StatusItem::ZPs0) + i,
-				   face_z.ps[i].status);
-	}
-
-	mask = pack_status(mask, static_cast<uint8_t>(StatusItem::XRef0), face_x.ref[0].status);
-	mask = pack_status(mask, static_cast<uint8_t>(StatusItem::XRef1), face_x.ref[1].status);
-	for (int i = 0; i < 6; i++) {
-		mask = pack_status(mask, static_cast<uint8_t>(StatusItem::XPs0) + i,
-				   face_x.ps[i].status);
-	}
-
-	return mask;
+	const ssize_t wrote = write_all(file, data, len);
+	return (wrote < 0) ? static_cast<int>(wrote) : 0;
 }
 
-int PayloadReading::build_payload_path(char *out, size_t out_len, uint32_t boot_count,
-				       uint32_t record_id)
+static int read_exact(struct fs_file_t *file, void *data, size_t len)
 {
-	if (out == NULL || out_len == 0) {
-		return -EINVAL;
+	const ssize_t got = read_all(file, data, len);
+	return (got < 0) ? static_cast<int>(got) : 0;
+}
+
+void PayloadReading::reset()
+{
+	imu_valid = false;
+	sweep_mask = 0;
+	memset(gyro, 0, sizeof(gyro));
+	memset(accel, 0, sizeof(accel));
+	memset(sweeps, 0, sizeof(sweeps)); // TODO: May not need memsets if bitmask is correct
+}
+
+void PayloadReading::add_sweep(const iv_sweep_t *sweep, size_t index)
+{
+	if (sweep == nullptr || index >= NUM_AMUS) {
+		return;
 	}
 
-	const int n =
-		snprintf(out, out_len, "%s/%u_%u.raw", kOutboxBasePath, boot_count, record_id);
-	if (n < 0) {
-		return -EINVAL;
+	sweeps[index] = *sweep;
+	sweep_mask |= static_cast<uint32_t>(BIT(index));
+}
+
+void PayloadReading::add_imu(const struct sensor_value *gyro_in,
+			     const struct sensor_value *accel_in)
+{
+	if (gyro_in == nullptr || accel_in == nullptr) {
+		return;
 	}
-	if (static_cast<size_t>(n) >= out_len) {
-		return -ENOMEM;
+
+	memcpy(gyro, gyro_in, sizeof(gyro));
+	memcpy(accel, accel_in, sizeof(accel));
+	imu_valid = true;
+}
+
+bool PayloadReading::get_sweep(size_t index, iv_sweep_t *sweep) const
+{
+	if (sweep == nullptr || index >= NUM_AMUS ||
+	    (sweep_mask & static_cast<uint32_t>(BIT(index))) == 0U) {
+		return false;
+	}
+
+	*sweep = sweeps[index];
+	return true;
+}
+
+bool PayloadReading::get_imu(struct sensor_value *gyro_out, struct sensor_value *accel_out) const
+{
+	if (gyro_out == nullptr || accel_out == nullptr || !imu_valid) {
+		return false;
+	}
+
+	memcpy(gyro_out, gyro, sizeof(gyro));
+	memcpy(accel_out, accel, sizeof(accel));
+	return true;
+}
+
+int PayloadReading::write_payloads(struct fs_file_t *file) const
+{
+	if (imu_valid) {
+		int ret = write_exact(file, gyro, sizeof(gyro));
+		if (ret < 0) {
+			return ret;
+		}
+
+		ret = write_exact(file, accel, sizeof(accel));
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	for (size_t i = 0; i < NUM_AMUS; ++i) {
+		if ((sweep_mask & static_cast<uint32_t>(BIT(i))) == 0U) {
+			continue;
+		}
+
+		const int ret = write_exact(file, &sweeps[i], sizeof(sweeps[i]));
+		if (ret < 0) {
+			return ret;
+		}
 	}
 
 	return 0;
 }
 
-int PayloadReading::write(uint32_t boot_count, uint32_t record_id) const
+int PayloadReading::read_payloads(struct fs_file_t *file, bool file_has_imu,
+				  uint32_t file_sweep_mask)
 {
-	char path[64];
-	int ret = build_payload_path(path, sizeof(path), boot_count, record_id);
-	if (ret < 0) {
-		return ret;
+	if (file_has_imu) {
+		int ret = read_exact(file, gyro, sizeof(gyro));
+		if (ret < 0) {
+			return ret;
+		}
+
+		ret = read_exact(file, accel, sizeof(accel));
+		if (ret < 0) {
+			return ret;
+		}
 	}
 
-	return write_to_path(path, boot_count, record_id);
+	for (size_t i = 0; i < NUM_AMUS; ++i) {
+		if ((file_sweep_mask & static_cast<uint32_t>(BIT(i))) == 0U) {
+			continue;
+		}
+
+		const int ret = read_exact(file, &sweeps[i], sizeof(sweeps[i]));
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
-int PayloadReading::write_to_path(const char *path, uint32_t boot_count, uint32_t record_id) const
+int PayloadReading::save(const char *path) const
 {
-	if (path == NULL) {
+	if (path == nullptr) {
 		return -EINVAL;
 	}
 
-	char tmp_path[96];
-	int path_len = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
-	if (path_len < 0 || path_len >= static_cast<int>(sizeof(tmp_path))) {
-		return -ENOMEM;
+	char tmp_path[160];
+	const int tmp_len = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
+	if (tmp_len < 0 || static_cast<size_t>(tmp_len) >= sizeof(tmp_path)) {
+		return -ENAMETOOLONG;
 	}
-
-	PayloadFileHeader header = {
-		.boot_count = boot_count,
-		.record_id = record_id,
-		.timestamp_ms = timestamp_ms,
-		.status_mask = status_mask(),
-	};
 
 	struct fs_file_t file;
 	fs_file_t_init(&file);
 
-	int ret = fs_open(&file, tmp_path, FS_O_CREATE | FS_O_RDWR);
+	int ret = fs_open(&file, tmp_path, FS_O_CREATE | FS_O_WRITE | FS_O_TRUNC);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = static_cast<int>(write_all(&file, &header, sizeof(header)));
-	if (ret < 0) {
-		fs_close(&file);
-		fs_unlink(tmp_path);
-		return ret;
-	}
+	const uint32_t file_mask =
+		(imu_valid ? static_cast<uint32_t>(BIT(0)) : 0U) | (sweep_mask << 1);
 
-	ret = static_cast<int>(write_all(&file, &imu, sizeof(imu)));
+	ret = write_exact(&file, &file_mask, sizeof(file_mask));
 	if (ret < 0) {
 		fs_close(&file);
 		fs_unlink(tmp_path);
 		return ret;
 	}
 
-	ret = static_cast<int>(write_all(&file, &face_z.sun, sizeof(face_z.sun)));
-	if (ret < 0) {
-		fs_close(&file);
-		fs_unlink(tmp_path);
-		return ret;
-	}
-
-	ret = static_cast<int>(write_all(&file, &face_x.sun, sizeof(face_x.sun)));
-	if (ret < 0) {
-		fs_close(&file);
-		fs_unlink(tmp_path);
-		return ret;
-	}
-
-	ret = static_cast<int>(write_all(&file, face_z.ref, sizeof(face_z.ref)));
-	if (ret < 0) {
-		fs_close(&file);
-		fs_unlink(tmp_path);
-		return ret;
-	}
-
-	ret = static_cast<int>(write_all(&file, face_z.ps, sizeof(face_z.ps)));
-	if (ret < 0) {
-		fs_close(&file);
-		fs_unlink(tmp_path);
-		return ret;
-	}
-
-	ret = static_cast<int>(write_all(&file, face_x.ref, sizeof(face_x.ref)));
-	if (ret < 0) {
-		fs_close(&file);
-		fs_unlink(tmp_path);
-		return ret;
-	}
-
-	ret = static_cast<int>(write_all(&file, face_x.ps, sizeof(face_x.ps)));
+	ret = write_payloads(&file);
 	if (ret < 0) {
 		fs_close(&file);
 		fs_unlink(tmp_path);
@@ -223,9 +229,11 @@ int PayloadReading::write_to_path(const char *path, uint32_t boot_count, uint32_
 	return 0;
 }
 
-int PayloadReading::read(const char *path)
+int PayloadReading::load(const char *path)
 {
-	if (path == NULL) {
+	reset();
+
+	if (path == nullptr) {
 		return -EINVAL;
 	}
 
@@ -237,87 +245,36 @@ int PayloadReading::read(const char *path)
 		return ret;
 	}
 
-	PayloadFileHeader header = {};
-	ret = static_cast<int>(read_all(&file, &header, sizeof(header)));
+	uint32_t file_mask = 0;
+	ret = read_exact(&file, &file_mask, sizeof(file_mask));
 	if (ret < 0) {
 		fs_close(&file);
 		return ret;
 	}
 
-	boot_count = header.boot_count;
-	record_id = header.record_id;
-	timestamp_ms = header.timestamp_ms;
-
-	ret = static_cast<int>(read_all(&file, &imu, sizeof(imu)));
-	if (ret < 0) {
+	if ((file_mask & ~kKnownFileBits) != 0U) {
 		fs_close(&file);
-		return ret;
+		return -EINVAL;
 	}
 
-	ret = static_cast<int>(read_all(&file, &face_z.sun, sizeof(face_z.sun)));
-	if (ret < 0) {
-		fs_close(&file);
-		return ret;
-	}
+	const bool file_has_imu = (file_mask & static_cast<uint32_t>(BIT(0))) != 0U;
+	const uint32_t file_sweep_mask = file_mask >> 1;
 
-	ret = static_cast<int>(read_all(&file, &face_x.sun, sizeof(face_x.sun)));
+	ret = read_payloads(&file, file_has_imu, file_sweep_mask);
 	if (ret < 0) {
 		fs_close(&file);
-		return ret;
-	}
-
-	ret = static_cast<int>(read_all(&file, face_z.ref, sizeof(face_z.ref)));
-	if (ret < 0) {
-		fs_close(&file);
-		return ret;
-	}
-
-	ret = static_cast<int>(read_all(&file, face_z.ps, sizeof(face_z.ps)));
-	if (ret < 0) {
-		fs_close(&file);
-		return ret;
-	}
-
-	ret = static_cast<int>(read_all(&file, face_x.ref, sizeof(face_x.ref)));
-	if (ret < 0) {
-		fs_close(&file);
-		return ret;
-	}
-
-	ret = static_cast<int>(read_all(&file, face_x.ps, sizeof(face_x.ps)));
-	if (ret < 0) {
-		fs_close(&file);
+		reset();
 		return ret;
 	}
 
 	ret = fs_close(&file);
 	if (ret < 0) {
+		reset();
 		return ret;
 	}
 
-	/* Enforce status bytes from the header mask to avoid trusting stale struct contents. */
-	imu.status = get_status(header.status_mask, static_cast<uint8_t>(StatusItem::Imu));
-	face_z.sun.status = get_status(header.status_mask, static_cast<uint8_t>(StatusItem::SunZ));
-	face_x.sun.status = get_status(header.status_mask, static_cast<uint8_t>(StatusItem::SunX));
-
-	face_z.ref[0].status =
-		get_status(header.status_mask, static_cast<uint8_t>(StatusItem::ZRef0));
-	face_z.ref[1].status =
-		get_status(header.status_mask, static_cast<uint8_t>(StatusItem::ZRef1));
-	for (int i = 0; i < 6; i++) {
-		face_z.ps[i].status =
-			get_status(header.status_mask, static_cast<uint8_t>(StatusItem::ZPs0) + i);
-	}
-
-	face_x.ref[0].status =
-		get_status(header.status_mask, static_cast<uint8_t>(StatusItem::XRef0));
-	face_x.ref[1].status =
-		get_status(header.status_mask, static_cast<uint8_t>(StatusItem::XRef1));
-	for (int i = 0; i < 6; i++) {
-		face_x.ps[i].status =
-			get_status(header.status_mask, static_cast<uint8_t>(StatusItem::XPs0) + i);
-	}
-
+	imu_valid = file_has_imu;
+	sweep_mask = file_sweep_mask;
 	return 0;
 }
 
