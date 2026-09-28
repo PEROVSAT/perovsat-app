@@ -36,11 +36,13 @@
 		};
 
 		/*
-		 * 3 MiB LittleFS
+		 * 3 MiB LittleFS (1 MiB code + 3 MiB storage = 4 MiB flash).
+		 * Must start at 0x100000, not 0x300000 — see
+		 * zephyr/dts/vendor/raspberrypi/partitions_4M_storage.dtsi.
 		 */
-		storage_partition: partition@300000 {
+		storage_partition: partition@100000 {
 			label = "storage";
-			reg = <0x00300000 DT_SIZE_M(3)>;
+			reg = <0x00100000 DT_SIZE_M(3)>;
 		};
 	};
 };

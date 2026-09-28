@@ -49,6 +49,7 @@ void payload_entry(void *p1, void *p2, void *p3)
 	while (1) {
 		health::Watchdog::check_in(health::MonitoredThread::Payload);
 
+		face_mask = 0;
 		reading.reset();
 
 		// Attempt to read the IMU
@@ -76,8 +77,20 @@ void payload_entry(void *p1, void *p2, void *p3)
 		// Read sweeps of powered AMUs
 		for (size_t i = 0; i < payload::NUM_AMUS; ++i) {
 			if ((payload::amus[i].face_bit & face_mask) != 0U) {
-				while (!device_is_ready(payload::amus[i].dev))
-					; // TODO: This needs a failure timeout
+				bool ready = false;
+				const int64_t ready_deadline = k_uptime_get() + 5000;
+
+				while (k_uptime_get() < ready_deadline) {
+					if (device_is_ready(payload::amus[i].dev)) {
+						ready = true;
+						break;
+					}
+					k_sleep(K_MSEC(10));
+				}
+				if (!ready) {
+					LOG_WRN("AMU %u not ready", static_cast<unsigned>(i));
+					continue;
+				}
 
 				amu_t *amu = amu_from_dev(payload::amus[i].dev);
 

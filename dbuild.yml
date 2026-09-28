@@ -1,7 +1,8 @@
 # dbuild.yml — device build configuration for west dbuild
 #
 # selections: which mode each device uses when building.
-#   This is the line you change day-to-day.
+#   This is the line you change day-to-day (IMU, AMU, FLASH, CONSOLE).
+#   CONSOLE: usb — shell + fs commands on USB CDC; off — no shell.
 #   Valid modes per device are listed under that device's `modes:` block below.
 #
 # devices: the complete map of devices, modes, snippets, and Kconfig backends.
@@ -11,6 +12,7 @@ selections:
   IMU: public-mock
   AMU: public-mock
   FLASH: pico2
+  CONSOLE: usb
 
 devices:
   IMU:
@@ -50,3 +52,11 @@ devices:
         snippet: nor-flash-sim
       pico2:
         snippet: nor-flash-pico2
+
+  CONSOLE:
+    modes:
+      off:
+        snippet: console-off
+      usb:
+        snippet: console-usb-pico2
+        board_overlay_required: true
