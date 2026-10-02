@@ -11,8 +11,8 @@
 selections:
   IMU: public-mock
   AMU: public-mock
-  FLASH: pico2
-  CONSOLE: usb
+  FLASH: virtual
+  CONSOLE: no-console
 
 devices:
   IMU:
@@ -55,7 +55,7 @@ devices:
 
   CONSOLE:
     modes:
-      off:
+      no-console:
         snippet: console-off
       usb:
         snippet: console-usb-pico2
