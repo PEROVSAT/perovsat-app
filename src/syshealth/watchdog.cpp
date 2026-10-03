@@ -1,4 +1,4 @@
-#include "watchdog.hpp"
+#include "syshealth/watchdog.hpp"
 
 #include <zephyr/logging/log.h>
 

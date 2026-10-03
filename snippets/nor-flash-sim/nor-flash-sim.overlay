@@ -1,3 +1,4 @@
+#include <mem.h>
 / {
 	sim_flash_controller: sim_flash_controller {
 		compatible = "zephyr,sim-flash";

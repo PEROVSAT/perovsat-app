@@ -11,81 +11,113 @@
 			compatible = "aerospace,amu";
 			reg = <0x08>;
 			status = "okay";
+			payload-index = <0>;
+			face = "pos-z";
 		};
 		amu_z_ref1: amu@9 {
 			compatible = "aerospace,amu";
 			reg = <0x09>;
 			status = "okay";
+			payload-index = <1>;
+			face = "pos-z";
 		};
 		amu_z_ps1: amu@a {
 			compatible = "aerospace,amu";
 			reg = <0x0a>;
 			status = "okay";
+			payload-index = <3>;
+			face = "pos-z";
 		};
 		amu_z_ps2: amu@b {
 			compatible = "aerospace,amu";
 			reg = <0x0b>;
 			status = "okay";
+			payload-index = <4>;
+			face = "pos-z";
 		};
 		amu_z_ps3: amu@c {
 			compatible = "aerospace,amu";
 			reg = <0x0c>;
 			status = "okay";
+			payload-index = <5>;
+			face = "pos-z";
 		};
 		amu_z_ps4: amu@d {
 			compatible = "aerospace,amu";
 			reg = <0x0d>;
 			status = "okay";
+			payload-index = <6>;
+			face = "pos-z";
 		};
 		amu_z_ps5: amu@e {
 			compatible = "aerospace,amu";
 			reg = <0x0e>;
 			status = "okay";
+			payload-index = <7>;
+			face = "pos-z";
 		};
 		amu_z_ps0: amu@f {
 			compatible = "aerospace,amu";
 			reg = <0x0f>;
 			status = "okay";
+			payload-index = <2>;
+			face = "pos-z";
 		};
 		amu_x_ref0: amu@10 {
 			compatible = "aerospace,amu";
 			reg = <0x10>;
 			status = "okay";
+			payload-index = <8>;
+			face = "pos-x";
 		};
 		amu_x_ref1: amu@11 {
 			compatible = "aerospace,amu";
 			reg = <0x11>;
 			status = "okay";
+			payload-index = <9>;
+			face = "pos-x";
 		};
 		amu_x_ps0: amu@12 {
 			compatible = "aerospace,amu";
 			reg = <0x12>;
 			status = "okay";
+			payload-index = <10>;
+			face = "pos-x";
 		};
 		amu_x_ps1: amu@13 {
 			compatible = "aerospace,amu";
 			reg = <0x13>;
 			status = "okay";
+			payload-index = <11>;
+			face = "pos-x";
 		};
 		amu_x_ps2: amu@14 {
 			compatible = "aerospace,amu";
 			reg = <0x14>;
 			status = "okay";
+			payload-index = <12>;
+			face = "pos-x";
 		};
 		amu_x_ps3: amu@15 {
 			compatible = "aerospace,amu";
 			reg = <0x15>;
 			status = "okay";
+			payload-index = <13>;
+			face = "pos-x";
 		};
 		amu_x_ps4: amu@16 {
 			compatible = "aerospace,amu";
 			reg = <0x16>;
 			status = "okay";
+			payload-index = <14>;
+			face = "pos-x";
 		};
 		amu_x_ps5: amu@17 {
 			compatible = "aerospace,amu";
 			reg = <0x17>;
 			status = "okay";
+			payload-index = <15>;
+			face = "pos-x";
 		};
 	};
 };

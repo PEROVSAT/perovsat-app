@@ -14,6 +14,7 @@ manifest:
           - cmsis_6
           - cmsis
           - hal_stm32
+          - hal_rpi_pico
           - littlefs
 
     - name: mpu6050-driver
@@ -21,14 +22,6 @@ manifest:
       revision: main
 
     - name: amu-driver
-      remote: origin
-      revision: main
-
-    - name: eyestar-driver
-      remote: origin
-      revision: main
-
-    - name: ss200-driver
       remote: origin
       revision: main
 
