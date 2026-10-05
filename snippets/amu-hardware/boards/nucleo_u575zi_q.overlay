@@ -1,12 +1,18 @@
 &i2c1 {
 	status = "okay";
 
-	// Enabled
+	/*
+	 * Bench build: only amu_z_ps0 is enabled. Its payload-index must be 0 when
+	 * NUM_AMUS == 1. For full-flight (all AMUs okay), use the mapping in
+	 * flight-overlay-index-face-example.dts (ZPs0 -> index 2).
+	 */
 
 	amu_z_ps0: amu@f {
 		compatible = "aerospace,amu";
 		reg = <0x0f>;
 		status = "okay";
+		payload-index = <0>; // Make this 2 when others are enabled
+		face = "pos-z";
 		amu-type = <1>;
 		amu-delay = <1>;
 		amu-ratio = <75>;
@@ -18,81 +24,109 @@
 		amu-area-ucm2 = <4>;
 	};
 
-	// Disabled (for testing, but flight config should enable)
-
 	amu_z_ref0: amu@8 {
 		compatible = "aerospace,amu";
 		reg = <0x08>;
 		status = "disabled";
+		payload-index = <0>;
+		face = "pos-z";
 	};
 	amu_z_ref1: amu@9 {
 		compatible = "aerospace,amu";
 		reg = <0x09>;
 		status = "disabled";
+		payload-index = <1>;
+		face = "pos-z";
 	};
 	amu_z_ps1: amu@a {
 		compatible = "aerospace,amu";
 		reg = <0x0a>;
 		status = "disabled";
+		payload-index = <3>;
+		face = "pos-z";
 	};
 	amu_z_ps2: amu@b {
 		compatible = "aerospace,amu";
 		reg = <0x0b>;
 		status = "disabled";
+		payload-index = <4>;
+		face = "pos-z";
 	};
 	amu_z_ps3: amu@c {
 		compatible = "aerospace,amu";
 		reg = <0x0c>;
 		status = "disabled";
+		payload-index = <5>;
+		face = "pos-z";
 	};
 	amu_z_ps4: amu@d {
 		compatible = "aerospace,amu";
 		reg = <0x0d>;
 		status = "disabled";
+		payload-index = <6>;
+		face = "pos-z";
 	};
 	amu_z_ps5: amu@e {
 		compatible = "aerospace,amu";
 		reg = <0x0e>;
 		status = "disabled";
+		payload-index = <7>;
+		face = "pos-z";
 	};
 	amu_x_ref0: amu@10 {
 		compatible = "aerospace,amu";
 		reg = <0x10>;
 		status = "disabled";
+		payload-index = <8>;
+		face = "pos-x";
 	};
 	amu_x_ref1: amu@11 {
 		compatible = "aerospace,amu";
 		reg = <0x11>;
 		status = "disabled";
+		payload-index = <9>;
+		face = "pos-x";
 	};
 	amu_x_ps0: amu@12 {
 		compatible = "aerospace,amu";
 		reg = <0x12>;
 		status = "disabled";
+		payload-index = <10>;
+		face = "pos-x";
 	};
 	amu_x_ps1: amu@13 {
 		compatible = "aerospace,amu";
 		reg = <0x13>;
 		status = "disabled";
+		payload-index = <11>;
+		face = "pos-x";
 	};
 	amu_x_ps2: amu@14 {
 		compatible = "aerospace,amu";
 		reg = <0x14>;
 		status = "disabled";
+		payload-index = <12>;
+		face = "pos-x";
 	};
 	amu_x_ps3: amu@15 {
 		compatible = "aerospace,amu";
 		reg = <0x15>;
 		status = "disabled";
+		payload-index = <13>;
+		face = "pos-x";
 	};
 	amu_x_ps4: amu@16 {
 		compatible = "aerospace,amu";
 		reg = <0x16>;
 		status = "disabled";
+		payload-index = <14>;
+		face = "pos-x";
 	};
 	amu_x_ps5: amu@17 {
 		compatible = "aerospace,amu";
 		reg = <0x17>;
 		status = "disabled";
+		payload-index = <15>;
+		face = "pos-x";
 	};
 };

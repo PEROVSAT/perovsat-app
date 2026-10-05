@@ -1,6 +1,6 @@
 #include "threads.hpp"
-#include "watchdog.hpp"
-#include "system_health.hpp"
+#include "syshealth/watchdog.hpp"
+#include "syshealth/system_health.hpp"
 
 #include <zephyr/logging/log.h>
 #include <zephyr/fs/fs.h>

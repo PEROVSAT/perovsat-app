@@ -1,7 +1,8 @@
 # dbuild.yml — device build configuration for west dbuild
 #
 # selections: which mode each device uses when building.
-#   This is the line you change day-to-day.
+#   This is the line you change day-to-day (IMU, AMU, FLASH, CONSOLE).
+#   CONSOLE: usb — shell + fs commands on USB CDC; off — no shell.
 #   Valid modes per device are listed under that device's `modes:` block below.
 #
 # devices: the complete map of devices, modes, snippets, and Kconfig backends.
@@ -9,9 +10,9 @@
 
 selections:
   IMU: public-mock
-  MODEM: public-mock
-  AMU: hardware
+  AMU: public-mock
   FLASH: virtual
+  CONSOLE: no-console
 
 devices:
   IMU:
@@ -32,13 +33,6 @@ devices:
         kconfig_backend: CONFIG_PEROVSAT_MPU6050_BACKEND_HARDWARE
         board_overlay_required: true
 
-  MODEM:
-    west_project: eyestar-driver
-    modes:
-      public-mock:
-        snippet: eyestar-public-mock
-        kconfig_backend: CONFIG_PEROVSAT_EYESTAR_S4_BACKEND_PUBLIC_MOCK
-
   AMU:
     west_project: amu-driver
     modes:
@@ -56,3 +50,13 @@ devices:
     modes:
       virtual:
         snippet: nor-flash-sim
+      pico2:
+        snippet: nor-flash-pico2
+
+  CONSOLE:
+    modes:
+      no-console:
+        snippet: console-off
+      usb:
+        snippet: console-usb-pico2
+        board_overlay_required: true
